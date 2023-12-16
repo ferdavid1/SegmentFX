@@ -3,6 +3,7 @@ Python-based GUI program for timeline-based video editing with AI object trackin
 
 ## Segmenter
 Meta Segment Anything Model (SAM): https://github.com/facebookresearch/segment-anything
+
 Ckpt: https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth
 
 ## FX
