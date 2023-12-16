@@ -2,7 +2,7 @@
 Python-based GUI program for timeline-based video editing with AI object tracking / masking and Audio-syncable Effects.
 
 ## Segmenter
-Meta Segment Anything Model (SAM)
+Meta Segment Anything Model (SAM): https://github.com/facebookresearch/segment-anything
 
 ## FX
 https://github.com/Akascape/FF-Dissolve-Glitch 
