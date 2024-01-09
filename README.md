@@ -1,19 +1,25 @@
-# SegmentFX
-Python-based GUI program for timeline-based video editing with AI object tracking / masking and Audio-syncable Effects.
+# video-editor
 
-## Segmenter
-Meta Segment Anything Model (SAM): https://github.com/facebookresearch/segment-anything
+Video cutter based on `Python3` and `PyQt5`.
 
-Ckpt: https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth (Place in SegmentFX directory)
+## Usage
 
-## FX
-https://github.com/Akascape/FF-Dissolve-Glitch 
+```
+python main.py
+```
 
-https://github.com/Akascape/Datamosher-Pro
+-   Select `Open` option in the menu bar to open a video.
+-   Click `Start` button to set the starting time and click `End` button to set the ending time. Click `Clear` to clear the recorded time.
+-   Click `Subclip (Video)` button to start cutting the video or `Subclip (Audio)` for only audio.
 
-# GUI Options
-OpenShot fork: https://github.com/OpenShot/openshot-qt
+## Requirements
 
-PyQt fork: https://github.com/Oscarshu0719/video-editor/tree/master
+-   `PyQt5`.
+-   [`ffmpeg`](https://ffmpeg.org/) (NOT `ffmpeg-python`).
 
-Tkinter from scratch: https://www.makeuseof.com/python-video-media-player-how-to-build/
+## License
+
+-   MIT License.
+
+
+

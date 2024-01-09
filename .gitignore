@@ -1,0 +1,4 @@
+*.pth 
+ openshot-qt/
+segment_anything/
+*.mp4
