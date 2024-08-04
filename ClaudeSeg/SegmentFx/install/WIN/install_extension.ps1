@@ -33,7 +33,7 @@ else {
 Write-Host "Checking for existing extension installation..."
 $extensionName = "SegmentFx"
 $sourceDir = Join-Path $PSScriptRoot "../../"
-$commonFilesPath = Join-Path ${Env:ProgramFiles}
+$commonFilesPath = ${Env:ProgramFiles}
 $destDir = Join-Path $commonFilesPath "Adobe\Adobe Premiere Pro CC 2018\CEP\extensions\$extensionName"
 
 if (-not (Test-Path $sourceDir)) {
