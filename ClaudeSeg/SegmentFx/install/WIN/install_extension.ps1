@@ -33,7 +33,8 @@ else {
 Write-Host "Checking for existing extension installation..."
 $extensionName = "SegmentFx"
 $sourceDir = Join-Path $PSScriptRoot $extensionName
-$destDir = Join-Path $env:"ProgramFiles (x86)\Common Files\" "Adobe\CEP\extensions\$extensionName"
+$commonFilesPath = Join-Path ${Env:ProgramFiles(x86)} "Common Files"
+$destDir = Join-Path $commonFilesPath "Adobe\CEP\extensions\$extensionName"
 
 if (-not (Test-Path $sourceDir)) {
     Write-Host "Error: Extension folder not found: $sourceDir"
