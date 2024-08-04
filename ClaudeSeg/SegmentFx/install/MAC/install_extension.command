@@ -24,7 +24,6 @@ fi
 # Copy extension
 echo "Checking for existing extension installation..."
 EXTENSION_NAME="SegmentFx"
-SOURCE_DIR="${0%/*}/../../$EXTENSION_NAME"
 DEST_DIR="/Library/Application Support/Adobe/CEP/extensions/$EXTENSION_NAME"
 
 if [ ! -d "$SOURCE_DIR" ]; then
