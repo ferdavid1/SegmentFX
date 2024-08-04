@@ -21,8 +21,10 @@ else
     fi
 fi
 
+
 # Copy extension
 echo "Checking for existing extension installation..."
+SOURCE_DIR="$(cd "${0%/*}/../../" && pwd)"
 EXTENSION_NAME="SegmentFx"
 DEST_DIR="/Library/Application Support/Adobe/CEP/extensions/$EXTENSION_NAME"
 
