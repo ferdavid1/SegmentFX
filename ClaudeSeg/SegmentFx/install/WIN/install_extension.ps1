@@ -32,7 +32,7 @@ else {
 # Copy extension
 Write-Host "Checking for existing extension installation..."
 $extensionName = "SegmentFx"
-$sourceDir = Join-Path $PSScriptRoot $extensionName
+$sourceDir = Join-Path $PSScriptRoot "../../""
 $commonFilesPath = Join-Path ${Env:ProgramFiles(x86)} "Common Files"
 $destDir = Join-Path $commonFilesPath "Adobe\CEP\extensions\$extensionName"
 
