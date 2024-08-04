@@ -3,7 +3,7 @@ import uuid
 import pathlib
 import os
 
-
+from metaseg import SegManualMaskPredictor
 from PIL import Image
 import PyQt5
 from PyQt5 import QtCore, QtWidgets
@@ -211,7 +211,7 @@ class MainWidget(QMainWindow):
     def segment(self, frame):
         sam = sam_model_registry["vit_h"](checkpoint="./sam_vit_h_4b8939.pth")
         mask_generator = SamAutomaticMaskGenerator(sam)
-        masks = mask_generator.generate(<your_image>)
+        masks = mask_generator.generate("")
         return masks # frame_segmented    
 
     def segment_framebyframe(self):
@@ -220,23 +220,35 @@ class MainWidget(QMainWindow):
 
     def inference_SA(self): 
         # TODO:  model inference
-        # do_inference_and_save_segmented(video_path)
 
         # try:
             # segment_framebyframe()
             # pass
         # except: # Inference Error
             # raise RuntimeError("Model Inference Problem")
-        raise RuntimeError("Model Inference Not Written")
-        seg_path = pathlib.Path(os.getcwd()) / "Segmented.mp4"    
-        # seg_path = pathlib.Path(os.getcwd()) / "Drain.mp4"
+        # raise RuntimeError("Model Inference Not Written")
+        results = SegManualMaskPredictor().video_predict(
+            source=self.filename,
+            model_type="vit_l", # vit_l, vit_h, vit_b
+            input_point=[(50, 50), (100, 100)],
+            input_label=[0, 1],
+            input_box=None,
+            multimask_output=False,
+            random_color=False,
+            output_path="Segmented.mp4",
+        )
+        print(results)
+        seg_path = pathlib.Path(os.getcwd()) / results    
         seg_qurl = QUrl.fromLocalFile(str(seg_path))
         seg_media = QMediaContent(seg_qurl)
         return seg_media
 
     def segment_paint_save(self):
-        if "segmented." in os.listdir(os.getcwd()):
-            return self.media
+        # if "Segmented.mp4" in os.listdir(os.getcwd()):
+        #     seg_path = pathlib.Path(os.getcwd()) / "Segmented.mp4"   
+        #     seg_qurl = QUrl.fromLocalFile(str(seg_path))
+        #     seg_media = QMediaContent(seg_qurl)
+        #     return seg_media
         segmented = self.inference_SA() 
         # do we need to paint? can we call that as a parameter, i.e. segment with border size X
         # seg_painted = paint(segmented) ???
