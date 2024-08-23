@@ -44,12 +44,12 @@ function getSequenceDetails() {
 
 // Function to get available effects
 function getAvailableEffects() {
-    return callExtendScript('getAvailableEffects');
+    return callExtendScript('getAllEffects');
 }
 
-// Function to apply an effect to a clip
-function applyEffectToClip(clipIndex, trackIndex, effectName) {
-    return callExtendScript('applyEffectToClip', clipIndex, trackIndex, effectName);
+// Function to apply multiple effects to a clip
+function applyMultipleEffects(clipIndex, trackIndex, effects) {
+    return callExtendScript('applyMultipleEffects', clipIndex, trackIndex, effects);
 }
 
 // Function to import masks to timeline

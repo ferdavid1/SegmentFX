@@ -1,4 +1,4 @@
-Copy<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -19,11 +19,22 @@ Copy<!DOCTYPE html>
         <button id="manualSegmentButton">Manual Segment</button>
         <button id="clearCanvasButton">Clear Canvas</button>
         
-        <h2>Apply Effect</h2>
-        <select id="effectSelect"></select>
-        <input type="number" id="clipIndexInput" placeholder="Clip Index">
-        <input type="number" id="trackIndexInput" placeholder="Track Index">
-        <button id="applyEffectButton">Apply Effect</button>
+        <h2>Apply Effects</h2>
+        <div>
+            <label for="trackIndexInput">Track Index:</label>
+            <input type="number" id="trackIndexInput" placeholder="Track Index" value="0" min="0">
+        </div>
+        <div>
+            <label for="clipIndexInput">Clip Index:</label>
+            <input type="number" id="clipIndexInput" placeholder="Clip Index" value="0" min="0">
+        </div>
+    
+        <select id="effectList" multiple></select>
+        <button id="addEffectButton">Add Effect</button>
+        
+        <div id="effectStack"></div>
+        
+        <button id="applyEffectsButton">Apply Effects</button>
         
         <div id="statusMessage"></div>
     </div>
@@ -43,6 +54,17 @@ Copy<!DOCTYPE html>
         
         <button id="refreshDetailsButton">Refresh Details</button>
     </div>
+
+    <button id="testButton">Test ExtendScript</button>
+    <script>
+        console.log("Extension loaded successfully!");
+        var csInterface = new CSInterface();
+        document.getElementById("testButton").addEventListener("click", function() {
+            csInterface.evalScript("sayHello()", function(result) {
+                alert(result);
+            });
+        });
+    </script>
 
     <script src="js/CSInterface.js"></script>
     <script src="js/host_communication.js" type="module"></script>

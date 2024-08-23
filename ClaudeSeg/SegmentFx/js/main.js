@@ -1,43 +1,86 @@
 // js/main.js
 
+import { 
+    autoSegment, 
+    manualSegment, 
+    getProjectDetails, 
+    getSequenceDetails, 
+    getAvailableEffects, 
+    applyMultipleEffects, 
+    addExtendScriptEventListener 
+} from './host_communication.js';
+
 // Initialize the CSInterface
 const csInterface = new CSInterface();
 
-// Function to call ExtendScript functions
-function callExtendScript(functionName, ...args) {
-    return new Promise((resolve, reject) => {
-        csInterface.evalScript(`${functionName}(${JSON.stringify(args).slice(1, -1)})`, (result) => {
-            if (result === 'EvalScript error.') {
-                reject(new Error('ExtendScript error'));
-            } else {
-                resolve(result);
-            }
+// Function to load all effects
+async function loadEffects() {
+    try {
+        const effects = await getAvailableEffects();
+        const effectList = document.getElementById('effectList');
+        effectList.innerHTML = '';
+        effects.forEach(effect => {
+            const option = document.createElement('option');
+            option.value = JSON.stringify(effect);
+            option.textContent = `${effect.name} (${effect.type})`;
+            effectList.appendChild(option);
         });
-    });
+    } catch (error) {
+        console.error('Error loading effects:', error);
+        updateStatus('Failed to load effects');
+    }
+}
+
+// Function to add effect to stack
+function addEffectToStack(effect) {
+    const effectStack = document.getElementById('effectStack');
+    const effectDiv = document.createElement('div');
+    effectDiv.className = 'effect-item';
+    effectDiv.textContent = effect.name;
+    
+    if (effect.type === 'custom') {
+        const paramInput = document.createElement('input');
+        paramInput.type = 'text';
+        paramInput.placeholder = 'Parameters (JSON)';
+        effectDiv.appendChild(paramInput);
+    }
+    
+    const removeButton = document.createElement('button');
+    removeButton.textContent = 'Remove';
+    removeButton.onclick = function() {
+        effectStack.removeChild(effectDiv);
+    };
+    effectDiv.appendChild(removeButton);
+    
+    effectStack.appendChild(effectDiv);
 }
 
 // Function to perform auto segmentation
 async function performAutoSegment() {
+    const objectCount = document.getElementById('objectCountInput').value;
+    updateStatus('Starting auto segmentation...');
     try {
-        const objectCount = document.getElementById('objectCountInput').value;
-        updateStatus('Starting auto segmentation...');
-        await callExtendScript('autoSegment', objectCount);
+        const result = await autoSegment(objectCount);
+        console.log(result);
         updateStatus('Auto segmentation complete');
     } catch (error) {
-        updateStatus('Error during auto segmentation: ' + error.message);
+        console.error('Auto segmentation error:', error);
+        updateStatus('Auto segmentation failed');
     }
 }
 
 // Function to perform manual segmentation
 async function performManualSegment() {
+    const canvas = document.getElementById('drawingCanvas');
+    const imageData = canvas.toDataURL();
+    updateStatus('Starting manual segmentation...');
     try {
-        const canvas = document.getElementById('drawingCanvas');
-        const imageData = canvas.toDataURL();
-        updateStatus('Starting manual segmentation...');
-        await callExtendScript('manualSegment', imageData);
+        const result = await manualSegment(imageData);
+        console.log(result);
         updateStatus('Manual segmentation complete');
     } catch (error) {
-        updateStatus('Error during manual segmentation: ' + error.message);
+        console.error('Manual segmentation error:', error);
+        updateStatus('Manual segmentation failed');
     }
 }
 
@@ -90,19 +133,20 @@ function clearCanvas() {
 // Function to load and display project details
 async function loadProjectDetails() {
     try {
-        const details = await callExtendScript('getProjectDetails');
+        const details = await getProjectDetails();
         document.getElementById('projectName').textContent = details.name;
         document.getElementById('projectPath').textContent = details.path;
         document.getElementById('sequenceCount').textContent = details.sequences;
     } catch (error) {
-        updateStatus('Error loading project details: ' + error.message);
+        console.error('Error loading project details:', error);
+        updateStatus('Failed to load project details');
     }
 }
 
 // Function to load and display sequence details
 async function loadSequenceDetails() {
     try {
-        const details = await callExtendScript('getSequenceDetails');
+        const details = await getSequenceDetails();
         if (details) {
             document.getElementById('sequenceName').textContent = details.name;
             document.getElementById('sequenceFramerate').textContent = details.framerate;
@@ -113,41 +157,8 @@ async function loadSequenceDetails() {
             updateStatus('No active sequence');
         }
     } catch (error) {
-        updateStatus('Error loading sequence details: ' + error.message);
-    }
-}
-
-// Function to load available effects
-async function loadAvailableEffects() {
-    try {
-        const effects = await callExtendScript('getAvailableEffects');
-        const selectElement = document.getElementById('effectSelect');
-        selectElement.innerHTML = '';
-        effects.forEach(effect => {
-            const option = document.createElement('option');
-            option.value = effect;
-            option.textContent = effect;
-            selectElement.appendChild(option);
-        });
-    } catch (error) {
-        updateStatus('Error loading effects: ' + error.message);
-    }
-}
-
-// Function to apply selected effect
-async function applySelectedEffect() {
-    try {
-        const effectName = document.getElementById('effectSelect').value;
-        const clipIndex = document.getElementById('clipIndexInput').value;
-        const trackIndex = document.getElementById('trackIndexInput').value;
-        const result = await callExtendScript('applyEffectToClip', clipIndex, trackIndex, effectName);
-        if (result) {
-            updateStatus('Effect applied successfully');
-        } else {
-            updateStatus('Failed to apply effect');
-        }
-    } catch (error) {
-        updateStatus('Error applying effect: ' + error.message);
+        console.error('Error loading sequence details:', error);
+        updateStatus('Failed to load sequence details');
     }
 }
 
@@ -166,9 +177,45 @@ document.addEventListener('DOMContentLoaded', () => {
         loadProjectDetails();
         loadSequenceDetails();
     });
+
+    // Event listener for add effect button
+    document.getElementById('addEffectButton').addEventListener('click', function() {
+        const selectedEffects = Array.from(document.getElementById('effectList').selectedOptions);
+        selectedEffects.forEach(option => {
+            const effect = JSON.parse(option.value);
+            addEffectToStack(effect);
+        });
+    });
+
+    // Event listener for apply effects button
+    document.getElementById('applyEffectsButton').addEventListener('click', function() {
+        const trackIndex = parseInt(document.getElementById('trackIndexInput').value, 10);
+        const clipIndex = parseInt(document.getElementById('clipIndexInput').value, 10);
+        
+        const effectStack = document.getElementById('effectStack');
+        const effects = Array.from(effectStack.children).map(effectDiv => {
+            const effect = JSON.parse(effectDiv.firstChild.textContent);
+            if (effect.type === 'custom') {
+                effect.parameters = JSON.parse(effectDiv.querySelector('input').value || '{}');
+            }
+            return effect;
+        });
+        
+        try {
+            const result = await applyMultipleEffects(clipIndex, trackIndex, effects);
+            console.log(result);
+            alert('Effects applied successfully!');
+        } catch (error) {
+            console.error('Error applying effects:', error);
+            alert('Failed to apply effects. Check the console for details.');
+        }
+    });
 });
 
 // Event listener for messages from ExtendScript
-csInterface.addEventListener('SegmentationComplete', (event) => {
+addExtendScriptEventListener('SegmentationComplete', function(event) {
     updateStatus(event.data);
 });
+
+// Load effects when the panel opens
+window.addEventListener('load', loadEffects);
