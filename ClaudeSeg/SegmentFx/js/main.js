@@ -13,17 +13,7 @@ import {
     addExtendScriptEventListener 
 } from './host_communication.js';
 
-debugLog('main.js loaded');
-
-// Add this at the beginning of the file
-window.onerror = function(message, source, lineno, colno, error) {
-    console.error('An error occurred:', error);
-    debugLog('Uncaught error: ' + message);
-    return true;
-};
-
-// Initialize the CSInterface
-const csInterface = new CSInterface();
+console.log('main.js loaded');
 
 // Function to load all effects
 async function loadEffects() {
@@ -174,76 +164,113 @@ async function loadSequenceDetails() {
     }
 }
 
-// Event listeners
-document.addEventListener('DOMContentLoaded', () => {
-    debugLog('DOMContentLoaded event fired');
+function initializeExtension() {
+    debugLog('main.js loaded');
 
-    setupDrawingCanvas();
-    loadProjectDetails();
-    loadSequenceDetails();
+    // Add this at the beginning of the file
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error('An error occurred:', error);
+        debugLog('Uncaught error: ' + message);
+        return true;
+    };
 
-    // Add event listener for the log button
-    document.getElementById('openLogButton').addEventListener('click', openLogFile);
-    debugLog('Open Log File button event listener added');
+    // Initialize the CSInterface
+    const csInterface = new CSInterface();
+    console.log('CSInterface initialized');
 
-    // Attempt to load effects and catch any errors
-    loadEffects().catch(error => {
-        console.error('Failed to load effects:', error);
-        openLogFile();
-    });
+    debugLog('Immediate debug log test');
+    logError(new Error('Test error logging'));
 
-    document.getElementById('autoSegmentButton').addEventListener('click', performAutoSegment);
-    document.getElementById('manualSegmentButton').addEventListener('click', performManualSegment);
-    document.getElementById('clearCanvasButton').addEventListener('click', clearCanvas);
-    document.getElementById('applyEffectButton').addEventListener('click', applySelectedEffect);
-    document.getElementById('refreshDetailsButton').addEventListener('click', () => {
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOMContentLoaded event fired');
+        debugLog('DOMContentLoaded event fired');
+
+        setupDrawingCanvas();
         loadProjectDetails();
         loadSequenceDetails();
-    });
 
-    // Event listener for add effect button
-    document.getElementById('addEffectButton').addEventListener('click', function() {
-        const selectedEffects = Array.from(document.getElementById('effectList').selectedOptions);
-        selectedEffects.forEach(option => {
-            const effect = JSON.parse(option.value);
-            addEffectToStack(effect);
-        });
-    });
-
-    // Event listener for apply effects button
-    document.getElementById('applyEffectsButton').addEventListener('click', function() {
-        const trackIndex = parseInt(document.getElementById('trackIndexInput').value, 10);
-        const clipIndex = parseInt(document.getElementById('clipIndexInput').value, 10);
-        
-        const effectStack = document.getElementById('effectStack');
-        const effects = Array.from(effectStack.children).map(effectDiv => {
-            const effect = JSON.parse(effectDiv.firstChild.textContent);
-            if (effect.type === 'custom') {
-                effect.parameters = JSON.parse(effectDiv.querySelector('input').value || '{}');
-            }
-            return effect;
-        });
-        
-        try {
-            const result = await applyMultipleEffects(clipIndex, trackIndex, effects);
-            console.log(result);
-            alert('Effects applied successfully!');
-        } catch (error) {
-            console.error('Error applying effects:', error);
-            alert('Failed to apply effects. Check the console for details.');
+        // Add event listener for the log button
+        const openLogButton = document.getElementById('openLogButton');
+        if (openLogButton) {
+            openLogButton.addEventListener('click', () => {
+                console.log('Open Log File button clicked');
+                openLogFile();
+            });
+            console.log('Open Log File button event listener added');
+        } else {
+            console.error('Open Log File button not found in the DOM');
         }
+
+
+        // Attempt to load effects and catch any errors
+        loadEffects().catch(error => {
+            console.error('Failed to load effects:', error);
+            openLogFile();
+        });
+
+        document.getElementById('autoSegmentButton').addEventListener('click', performAutoSegment);
+        document.getElementById('manualSegmentButton').addEventListener('click', performManualSegment);
+        document.getElementById('clearCanvasButton').addEventListener('click', clearCanvas);
+        document.getElementById('applyEffectButton').addEventListener('click', applySelectedEffect);
+        document.getElementById('refreshDetailsButton').addEventListener('click', () => {
+            loadProjectDetails();
+            loadSequenceDetails();
+        });
+
+        // Event listener for add effect button
+        document.getElementById('addEffectButton').addEventListener('click', function() {
+            const selectedEffects = Array.from(document.getElementById('effectList').selectedOptions);
+            selectedEffects.forEach(option => {
+                const effect = JSON.parse(option.value);
+                addEffectToStack(effect);
+            });
+        });
+
+        // Event listener for apply effects button
+        document.getElementById('applyEffectsButton').addEventListener('click', function() {
+            const trackIndex = parseInt(document.getElementById('trackIndexInput').value, 10);
+            const clipIndex = parseInt(document.getElementById('clipIndexInput').value, 10);
+            
+            const effectStack = document.getElementById('effectStack');
+            const effects = Array.from(effectStack.children).map(effectDiv => {
+                const effect = JSON.parse(effectDiv.firstChild.textContent);
+                if (effect.type === 'custom') {
+                    effect.parameters = JSON.parse(effectDiv.querySelector('input').value || '{}');
+                }
+                return effect;
+            });
+            
+            try {
+                const result = await applyMultipleEffects(clipIndex, trackIndex, effects);
+                console.log(result);
+                alert('Effects applied successfully!');
+            } catch (error) {
+                console.error('Error applying effects:', error);
+                alert('Failed to apply effects. Check the console for details.');
+            }
+        });
     });
-});
 
-window.onerror = function(message, source, lineno, colno, error) {
-    debugLog('Uncaught error: ' + message);
-    return true;
-};
+    window.onerror = function(message, source, lineno, colno, error) {
+        debugLog('Uncaught error: ' + message);
+        return true;
+    };
 
-// Event listener for messages from ExtendScript
-addExtendScriptEventListener('SegmentationComplete', function(event) {
-    updateStatus(event.data);
-});
+    // Event listener for messages from ExtendScript
+    addExtendScriptEventListener('SegmentationComplete', function(event) {
+        updateStatus(event.data);
+    });
 
-// Load effects when the panel opens
-window.addEventListener('load', loadEffects);
+    // Load effects when the panel opens
+    window.addEventListener('load', loadEffects);
+
+}
+
+
+// Wait for Web Components to be ready before initializing
+if (window.WebComponents && window.WebComponents.ready) {
+    initializeExtension();
+} else {
+    window.addEventListener('WebComponentsReady', initializeExtension);
+}

@@ -9,6 +9,22 @@
 <body>
     <div class="container">
         <h1>Video Segmentation</h1>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/2.4.3/custom-elements-es5-adapter.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/2.4.3/webcomponents-bundle.js"></script>
+
+        <button id="openLogButton">Open Log File</button>
+
+        <button id="testButton">Test ExtendScript</button>
+        <script>
+            console.log("Extension loaded successfully!");
+            var csInterface = new CSInterface();
+            document.getElementById("testButton").addEventListener("click", function() {
+                csInterface.evalScript("sayHello()", function(result) {
+                    alert(result);
+                });
+            });
+        </script>
         
         <h2>Auto Segmentation</h2>
         <input type="number" id="objectCountInput" min="1" value="1">
@@ -35,8 +51,6 @@
         <div id="effectStack"></div>
         
         <button id="applyEffectsButton">Apply Effects</button>
-
-        <button id="openLogButton">Open Log File</button>
         
         <div id="statusMessage"></div>
     </div>
@@ -56,17 +70,6 @@
         
         <button id="refreshDetailsButton">Refresh Details</button>
     </div>
-
-    <button id="testButton">Test ExtendScript</button>
-    <script>
-        console.log("Extension loaded successfully!");
-        var csInterface = new CSInterface();
-        document.getElementById("testButton").addEventListener("click", function() {
-            csInterface.evalScript("sayHello()", function(result) {
-                alert(result);
-            });
-        });
-    </script>
 
     <script src="js/CSInterface.js"></script>
     <script src="js/host_communication.js" type="module"></script>
