@@ -182,13 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadProjectDetails();
     loadSequenceDetails();
 
-    // Add a button to open log file
-    const openLogButton = document.createElement('button');
-    openLogButton.textContent = 'Open Log File';
-    openLogButton.addEventListener('click', openLogFile);
-    document.body.appendChild(openLogButton);
-
-    debugLog('Open Log File button added');
+    // Add event listener for the log button
+    document.getElementById('openLogButton').addEventListener('click', openLogFile);
+    debugLog('Open Log File button event listener added');
 
     // Attempt to load effects and catch any errors
     loadEffects().catch(error => {
