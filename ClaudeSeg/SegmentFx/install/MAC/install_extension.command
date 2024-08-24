@@ -39,8 +39,14 @@ fi
 if [ -d "$DEST_DIR" ]; then
     read -p "Extension is already installed. Do you want to reinstall? (y/N) " choice
     case "$choice" in 
-        y|Y ) echo "Proceeding with reinstallation...";;
-        * ) echo "Installation cancelled."; exit 0;;
+        y|Y )
+            echo "Proceeding with reinstallation..."
+            sudo rm -rf "$DEST_DIR"
+            ;;
+        * )
+            echo "Installation cancelled."
+            exit 0
+            ;;
     esac
 fi
 

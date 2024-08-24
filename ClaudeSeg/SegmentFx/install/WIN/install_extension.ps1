@@ -55,7 +55,10 @@ if (-not (Test-Path $sourceDir)) {
 
 if (Test-Path $destDir) {
     $choice = Read-Host "Extension is already installed. Do you want to reinstall? (Y/N)"
-    if ($choice -ne "Y" -and $choice -ne "y") {
+    if ($choice -eq "Y" -or $choice -eq "y") {
+        Write-Host "Removing existing installation..."
+        Remove-Item -Path $destDir -Recurse -Force
+    } else {
         Write-Host "Installation cancelled."
         exit 0
     }
