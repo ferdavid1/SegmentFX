@@ -6,15 +6,19 @@ import {
     getProjectDetails, 
     getSequenceDetails, 
     getAvailableEffects,
-    openLogFile, 
+    logError,
+    debugLog,
+    openLogFile,
     applyMultipleEffects, 
     addExtendScriptEventListener 
 } from './host_communication.js';
 
+debugLog('main.js loaded');
+
 // Add this at the beginning of the file
 window.onerror = function(message, source, lineno, colno, error) {
     console.error('An error occurred:', error);
-    openLogFile();
+    debugLog('Uncaught error: ' + message);
     return true;
 };
 
@@ -172,10 +176,20 @@ async function loadSequenceDetails() {
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
+    debugLog('DOMContentLoaded event fired');
+
     setupDrawingCanvas();
     loadProjectDetails();
     loadSequenceDetails();
-    
+
+    // Add a button to open log file
+    const openLogButton = document.createElement('button');
+    openLogButton.textContent = 'Open Log File';
+    openLogButton.addEventListener('click', openLogFile);
+    document.body.appendChild(openLogButton);
+
+    debugLog('Open Log File button added');
+
     // Attempt to load effects and catch any errors
     loadEffects().catch(error => {
         console.error('Failed to load effects:', error);
@@ -224,6 +238,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+window.onerror = function(message, source, lineno, colno, error) {
+    debugLog('Uncaught error: ' + message);
+    return true;
+};
 
 // Event listener for messages from ExtendScript
 addExtendScriptEventListener('SegmentationComplete', function(event) {

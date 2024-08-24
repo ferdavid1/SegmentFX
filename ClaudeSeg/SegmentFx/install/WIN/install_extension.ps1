@@ -8,6 +8,11 @@ function Is-DebugModeEnabled {
         $value = Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue
         return ($value -ne $null -and $value.PlayerDebugMode -eq "1")
     }
+    $secondregPath = "HKCU:\Software\Adobe\CSXS.8"
+    if (Test-Path $secondregPath) {
+        $value = Get-ItemProperty -Path $secondregPath -Name $regName -ErrorAction SilentlyContinue
+        return ($value -ne $null -and $value.PlayerDebugMode -eq "1")
+    }
     return $false
 }
 
@@ -19,7 +24,14 @@ if (Is-DebugModeEnabled) {
 else {
     Write-Host "Enabling debug mode for Adobe extensions..."
     try {
-        New-Item -Path "HKCU:\Software\Adobe\CSXS.11" -Force | Out-Null
+        if (-not (Test-Path "HKCU:\Software\Adobe\CSXS.8")) {
+            New-Item -Path "HKCU:\Software\Adobe\CSXS.8" -Force | Out-Null
+        }
+        Set-ItemProperty -Path "HKCU:\Software\Adobe\CSXS.8" -Name "PlayerDebugMode" -Value "1" -Type String
+
+        if (-not (Test-Path "HKCU:\Software\Adobe\CSXS.8")) {
+            New-Item -Path "HKCU:\Software\Adobe\CSXS.11" -Force | Out-Null
+        }
         Set-ItemProperty -Path "HKCU:\Software\Adobe\CSXS.11" -Name "PlayerDebugMode" -Value "1" -Type String
         Write-Host "Debug mode enabled successfully."
     }

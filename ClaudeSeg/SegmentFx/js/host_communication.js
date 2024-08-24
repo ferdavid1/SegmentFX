@@ -3,16 +3,51 @@
 // Initialize the CSInterface
 const csInterface = new CSInterface();
 
+function getLogPath() {
+    // Use the extension's own directory for logs
+    return csInterface.getSystemPath(SystemPath.EXTENSION) + '/logs/adobe_cep_logs.txt';
+}
+
+function ensureDirectoryExistence(filePath) {
+    const dirname = filePath.substring(0, filePath.lastIndexOf('/'));
+    if (!window.cep.fs.existsSync(dirname)) {
+        window.cep.fs.mkdirSync(dirname, { recursive: true });
+    }
+}
+
 function logError(error) {
-    const logPath = csInterface.getSystemPath(SystemPath.MY_DOCUMENTS) + '/adobe_cep_logs.txt';
+    const logPath = getLogPath();
+    ensureDirectoryExistence(logPath);
     const message = `${new Date().toISOString()}: ${error.toString()}\n`;
-    const command = `echo "${message}" >> "${logPath}"`;
-    system.callSystem(command);
+    
+    if (window.cep) {
+        window.cep.fs.appendFileSync(logPath, message, 'utf8');
+    } else {
+        // Fallback to using ExtendScript for file writing
+        const command = `
+        (function() {
+            var file = new File("${logPath}");
+            file.open('a');
+            file.write("${message}");
+            file.close();
+        })();
+        `;
+        csInterface.evalScript(command);
+    }
+}
+
+function debugLog(message) {
+    console.log(message);
+    logError(new Error(message));
 }
 
 function openLogFile() {
-    const logPath = csInterface.getSystemPath(SystemPath.MY_DOCUMENTS) + '/adobe_cep_logs.txt';
-    csInterface.openURLInDefaultBrowser('file://' + logPath);
+    const logPath = getLogPath();
+    if (window.cep) {
+        window.cep.process.openURLInDefaultBrowser('file://' + logPath);
+    } else {
+        csInterface.openURLInDefaultBrowser('file://' + logPath);
+    }
 }
 
 // Utility function to call ExtendScript functions
@@ -82,6 +117,8 @@ export {
     getSequenceDetails,
     getAvailableEffects,
     applyEffectToClip,
+    logError,
+    debugLog,
     openLogFile,
     importMasksToTimeline,
     addExtendScriptEventListener

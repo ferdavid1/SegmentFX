@@ -4,6 +4,8 @@
 is_debug_mode_enabled() {
     local debug_mode=$(defaults read com.adobe.CSXS.11 PlayerDebugMode 2>/dev/null)
     [[ "$debug_mode" == "1" ]]
+    local debug_mode=$(defaults read com.adobe.CSXS.8 PlayerDebugMode 2>/dev/null)
+    [[ "$debug_mode" == "1" ]]
 }
 
 # Enable debug mode
@@ -13,6 +15,7 @@ if is_debug_mode_enabled; then
 else
     echo "Enabling debug mode for Adobe extensions..."
     defaults write com.adobe.CSXS.11 PlayerDebugMode 1
+    defaults write com.adobe.CSXS.8 PlayerDebugMode 1
     if [ $? -eq 0 ]; then
         echo "Debug mode enabled successfully."
     else
