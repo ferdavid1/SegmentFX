@@ -5,10 +5,18 @@ import {
     manualSegment, 
     getProjectDetails, 
     getSequenceDetails, 
-    getAvailableEffects, 
+    getAvailableEffects,
+    openLogFile, 
     applyMultipleEffects, 
     addExtendScriptEventListener 
 } from './host_communication.js';
+
+// Add this at the beginning of the file
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error('An error occurred:', error);
+    openLogFile();
+    return true;
+};
 
 // Initialize the CSInterface
 const csInterface = new CSInterface();
@@ -167,7 +175,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDrawingCanvas();
     loadProjectDetails();
     loadSequenceDetails();
-    loadAvailableEffects();
+    
+    // Attempt to load effects and catch any errors
+    loadEffects().catch(error => {
+        console.error('Failed to load effects:', error);
+        openLogFile();
+    });
 
     document.getElementById('autoSegmentButton').addEventListener('click', performAutoSegment);
     document.getElementById('manualSegmentButton').addEventListener('click', performManualSegment);

@@ -3,18 +3,30 @@
 // Initialize the CSInterface
 const csInterface = new CSInterface();
 
+function logError(error) {
+    const logPath = csInterface.getSystemPath(SystemPath.MY_DOCUMENTS) + '/adobe_cep_logs.txt';
+    const message = `${new Date().toISOString()}: ${error.toString()}\n`;
+    const command = `echo "${message}" >> "${logPath}"`;
+    system.callSystem(command);
+}
+
+function openLogFile() {
+    const logPath = csInterface.getSystemPath(SystemPath.MY_DOCUMENTS) + '/adobe_cep_logs.txt';
+    csInterface.openURLInDefaultBrowser('file://' + logPath);
+}
+
 // Utility function to call ExtendScript functions
 function callExtendScript(functionName, ...args) {
     return new Promise((resolve, reject) => {
         csInterface.evalScript(`${functionName}(${JSON.stringify(args).slice(1, -1)})`, (result) => {
             if (result === 'EvalScript error.') {
-                reject(new Error('ExtendScript error'));
+                const error = new Error('ExtendScript error');
+                logError(error);
+                reject(error);
             } else {
                 try {
-                    // Try to parse the result as JSON
                     resolve(JSON.parse(result));
                 } catch (e) {
-                    // If it's not JSON, return the raw result
                     resolve(result);
                 }
             }
@@ -70,6 +82,7 @@ export {
     getSequenceDetails,
     getAvailableEffects,
     applyEffectToClip,
+    openLogFile,
     importMasksToTimeline,
     addExtendScriptEventListener
 };

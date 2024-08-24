@@ -2,7 +2,7 @@
 <ExtensionManifest Version="5.0" ExtensionBundleId="com.videosegmentation" ExtensionBundleVersion="1.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <ExtensionList>
-        <Extension Id="com.videosegmentation.panel" Version="1.0" />
+        <Extension Id="com.videosegmentation.panel"/>
     </ExtensionList>
     <ExecutionEnvironment>
         <HostList>
@@ -35,6 +35,13 @@
                         </Size>
                     </Geometry>
                 </UI>
+                <CEFCommandLine>
+                    <Parameter>--enable-nodejs</Parameter>
+                    <Parameter>--mixed-context</Parameter>
+                    <Parameter>--enable-logging</Parameter>
+                    <Parameter>--enable-remote-debugging</Parameter>
+                    <Parameter>--log-level=0</Parameter>
+                </CEFCommandLine>
             </DispatchInfo>
         </Extension>
     </DispatchInfoList>
