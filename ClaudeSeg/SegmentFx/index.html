@@ -12,8 +12,10 @@
 
         <button id="openLogButton">Open Log File</button>
 
-        <button id="testButton">Test ExtendScript</button>
-        <script>
+        <button id="testExtendScriptButton">Test ExtendScript</button>
+        <div id="testResult"></div>
+
+<!--         <script>
             console.log("Extension loaded successfully!");
             var csInterface = new CSInterface();
             document.getElementById("testButton").addEventListener("click", function() {
@@ -21,7 +23,7 @@
                     alert(result);
                 });
             });
-        </script>
+        </script> -->
         
         <h2>Auto Segmentation</h2>
         <input type="number" id="objectCountInput" min="1" value="1">

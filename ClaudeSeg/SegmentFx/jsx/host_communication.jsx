@@ -1,5 +1,9 @@
 // host_communication.jsx
 
+function testExtendScriptFunction() {
+    return "ExtendScript is working!";
+}
+
 // Function to get the current project
 function getCurrentProject() {
     return app.project;

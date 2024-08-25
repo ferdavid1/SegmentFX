@@ -4,6 +4,19 @@ var HostCommunication = (function() {
     // Initialize the CSInterface
     const csInterface = new CSInterface();
 
+    function testExtendScript() {
+        return new Promise(function(resolve, reject) {
+            csInterface.evalScript('testExtendScriptFunction()', function(result) {
+                if (result === 'undefined' || result === 'EvalScript error.') {
+                    reject(new Error('ExtendScript test failed'));
+                } else {
+                    resolve(result);
+                }
+            });
+        });
+    }
+
+
     function getLogPath() {
         // Use the extension's own directory for logs
         return csInterface.getSystemPath(SystemPath.EXTENSION) + '/logs/adobe_cep_logs.txt';
@@ -111,6 +124,7 @@ var HostCommunication = (function() {
     }
 
     return {
+        testExtendScript: testExtendScript,
         logError: logError,
         debugLog: debugLog,
         openLogFile: openLogFile,

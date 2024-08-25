@@ -67,6 +67,24 @@
 
         HostCommunication.debugLog('Extension initializing');
 
+        // Setup testing button
+        var testExtendScriptButton = document.getElementById('testExtendScriptButton');
+        var testResultDiv = document.getElementById('testResult');
+
+        if (testExtendScriptButton) {
+            testExtendScriptButton.addEventListener('click', function() {
+                HostCommunication.testExtendScript()
+                    .then(function(result) {
+                        testResultDiv.textContent = 'ExtendScript test successful: ' + result;
+                        testResultDiv.style.color = 'green';
+                    })
+                    .catch(function(error) {
+                        testResultDiv.textContent = 'ExtendScript test failed: ' + error.message;
+                        testResultDiv.style.color = 'red';
+                    });
+            });
+        }
+
         // Set up event listeners
         var autoSegmentButton = document.getElementById('autoSegmentButton');
         if (autoSegmentButton) {
