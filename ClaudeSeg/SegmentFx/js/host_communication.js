@@ -1,6 +1,8 @@
 // js/host_communication.js
 
 var HostCommunication = (function() {
+    console.log("host_communication.js loaded");
+    
     // Initialize the CSInterface
     const csInterface = new CSInterface();
 
@@ -15,7 +17,6 @@ var HostCommunication = (function() {
             });
         });
     }
-
 
     function getLogPath() {
         // Use the extension's own directory for logs
