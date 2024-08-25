@@ -124,12 +124,12 @@ var HostCommunication = (function() {
     }
 
     return {
-        testExtendScript: testExtendScript,
         logError: logError,
         debugLog: debugLog,
         openLogFile: openLogFile,
         autoSegment: autoSegment,
         manualSegment: manualSegment,
+        testExtendScript: testExtendScript,
         getProjectDetails: getProjectDetails,
         getSequenceDetails: getSequenceDetails,
         getAvailableEffects: getAvailableEffects,
