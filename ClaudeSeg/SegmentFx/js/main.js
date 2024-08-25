@@ -2,18 +2,18 @@
 
 (function() {
 
-    console.log('main.js loaded');
-    HostCommunication.debugLog('main.js loaded');
+    console.log('main.js loading');
+    // HostCommunication.debugLog('main.js loaded');
 
     // Add this at the beginning of the file
-    window.onerror = function(message, source, lineno, colno, error) {
-        console.error('An error occurred:', error);
-        HostCommunication.debugLog('Uncaught error: ' + message);
-        return true;
-    };
+    // window.onerror = function(message, source, lineno, colno, error) {
+    //     console.error('An error occurred:', error);
+    //     // HostCommunication.debugLog('Uncaught error: ' + message);
+    //     return true;
+    // };
 
-    HostCommunication.debugLog('Immediate debug log test');
-    HostCommunication.logError(new Error('Test error logging'));
+    // HostCommunication.debugLog('Immediate debug log test');
+    // HostCommunication.logError(new Error('Test error logging'));
 
     // Function to load all effects
     function loadEffects() {
@@ -27,11 +27,12 @@
                     option.textContent = effect.name + ' (' + effect.type + ')';
                     effectList.appendChild(option);
                 });
-                HostCommunication.debugLog('Effects loaded successfully');
+                console.log('Effects loaded successfully');
+                // HostCommunication.debugLog('Effects loaded successfully');
             })
             .catch(function(error) {
                 console.error('Error loading effects:', error);
-                HostCommunication.debugLog('Failed to load effects: ' + error.message);
+                // HostCommunication.debugLog('Failed to load effects: ' + error.message);
             });
     }
 
@@ -62,7 +63,8 @@
 
     function initializeExtension() {
 
-        HostCommunication.debugLog('Extension initializing');
+        console.log("Extension initializing")
+        // HostCommunication.debugLog('Extension initializing');
 
         // Setup testing button
         var testExtendScriptButton = document.getElementById('testExtendScriptButton');
@@ -176,29 +178,41 @@
 
         loadEffects()
             .then(function() {
-                HostCommunication.debugLog('Effects loaded in initialization');
+                console.log("Effects loaded in initialization");
+                // HostCommunication.debugLog('Effects loaded in initialization');
             })
             .catch(function(error) {
-                HostCommunication.debugLog('Failed to load effects in initialization: ' + error.message);
+                console.log('Failed to load effects in initialization: ' + error.message);
+                // HostCommunication.debugLog('Failed to load effects in initialization: ' + error.message);
             });
 
-        HostCommunication.debugLog('Extension initialized');
+        console.log("Extension initialized");
+        // HostCommunication.debugLog('Extension initialized');
 
     }
 
-    document.addEventListener('DOMContentLoaded', initializeExtension);
+    // Call initializeExtension when the DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeExtension);
+    } else {
+        initializeExtension();
+    }
 
     // Add event listener for window load to ensure everything is fully loaded
     window.addEventListener('load', function() {
-        HostCommunication.debugLog('Window fully loaded');
+        console.log('Window fully loaded');
+        // HostCommunication.debugLog('Window fully loaded');
         loadEffects()
             .then(function() {
-                HostCommunication.debugLog('Effects reloaded after window load');
+                console.log('Effects reloaded after window load')
+                // HostCommunication.debugLog('Effects reloaded after window load');
             })
             .catch(function(error) {
-                HostCommunication.debugLog('Failed to reload effects after window load: ' + error.message);
+                console.log('Failed to reload effects after window load: ' + error.message)
+                // HostCommunication.debugLog('Failed to reload effects after window load: ' + error.message);
             });
     });
 
-    HostCommunication.debugLog('main.js loaded');
+    console.log('main.js loaded')
+    // HostCommunication.debugLog('main.js loaded');
 })();
