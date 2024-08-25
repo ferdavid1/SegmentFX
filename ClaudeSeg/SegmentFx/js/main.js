@@ -17,7 +17,7 @@
     console.log('CSInterface initialized');
 
     HostCommunication.debugLog('Immediate debug log test');
-    logError(new Error('Test error logging'));
+    HostCommunication.logError(new Error('Test error logging'));
 
     // Function to load all effects
     function loadEffects() {
