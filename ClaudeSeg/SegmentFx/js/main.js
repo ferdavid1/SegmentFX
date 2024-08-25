@@ -12,11 +12,6 @@
         return true;
     };
 
-    // Initialize the CSInterface
-    const csInterface = new CSInterface();
-
-    console.log("CSInterface initialized");
-
     HostCommunication.debugLog('Immediate debug log test');
     HostCommunication.logError(new Error('Test error logging'));
 
