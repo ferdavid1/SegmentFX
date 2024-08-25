@@ -1,12 +1,7 @@
 // js/main.js
 
 (function() {
-    if (!document.registerElement) {
-        document.registerElement = function() {
-            console.warn('document.registerElement is not supported and has been disabled.');
-        };
-    }
-    
+
     console.log('main.js loaded');
     debugLog('main.js loaded');
 
