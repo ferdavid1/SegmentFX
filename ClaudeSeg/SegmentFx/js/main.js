@@ -3,12 +3,12 @@
 (function() {
 
     console.log('main.js loaded');
-    debugLog('main.js loaded');
+    HostCommunication.debugLog('main.js loaded');
 
     // Add this at the beginning of the file
     window.onerror = function(message, source, lineno, colno, error) {
         console.error('An error occurred:', error);
-        debugLog('Uncaught error: ' + message);
+        HostCommunication.debugLog('Uncaught error: ' + message);
         return true;
     };
 
@@ -16,7 +16,7 @@
     var csInterface = new CSInterface();
     console.log('CSInterface initialized');
 
-    debugLog('Immediate debug log test');
+    HostCommunication.debugLog('Immediate debug log test');
     logError(new Error('Test error logging'));
 
     // Function to load all effects
