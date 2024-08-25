@@ -2,9 +2,11 @@
 
 var HostCommunication = (function() {
     console.log("host_communication.js loaded");
-    
+
     // Initialize the CSInterface
     const csInterface = new CSInterface();
+
+    console.log("CSInterface.js loaded");
 
     function testExtendScript() {
         return new Promise(function(resolve, reject) {
