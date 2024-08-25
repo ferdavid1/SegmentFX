@@ -85,6 +85,11 @@
             });
         }
 
+        var openLogButton = document.getElementById('openLogButton');
+        if (openLogButton) {
+            openLogButton.addEventListener('click', HostCommunication.openLogFile);
+        }
+
         // Set up event listeners
         var autoSegmentButton = document.getElementById('autoSegmentButton');
         if (autoSegmentButton) {
@@ -115,11 +120,6 @@
                         console.error('Manual segmentation error:', error);
                     });
             });
-        }
-
-        var openLogButton = document.getElementById('openLogButton');
-        if (openLogButton) {
-            openLogButton.addEventListener('click', HostCommunication.openLogFile);
         }
 
         var addEffectButton = document.getElementById('addEffectButton');

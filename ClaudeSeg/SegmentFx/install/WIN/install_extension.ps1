@@ -68,7 +68,22 @@ Write-Host "Copying extension to Adobe CEP extensions folder..."
 try {
     New-Item -Path (Split-Path $destDir) -ItemType Directory -Force | Out-Null
     Copy-Item -Path $sourceDir -Destination $destDir -Recurse -Force
+
+    # Create logs directory and empty log file
+    $logsDir = Join-Path $destDir "logs"
+    New-Item -Path $logsDir -ItemType Directory -Force | Out-Null
+    $logFile = Join-Path $logsDir "adobe_cep_logs.txt"
+    New-Item -Path $logFile -ItemType File -Force | Out-Null
+    
+    # Set permissions to allow writing
+    $acl = Get-Acl $logsDir
+    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule("Users","Modify","Allow")
+    $acl.SetAccessRule($rule)
+    Set-Acl $logsDir $acl
+    Set-Acl $logFile $acl
+    
     Write-Host "Extension copied successfully."
+    Write-Host "Logs directory and file created with write permissions."
 }
 catch {
     Write-Host "Failed to copy extension files. Error: $_"

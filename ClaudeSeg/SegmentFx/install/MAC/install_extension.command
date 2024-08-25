@@ -56,6 +56,22 @@ sudo cp -R "$SOURCE_DIR" "$DEST_DIR"
 
 if [ $? -eq 0 ]; then
     echo "Extension copied successfully."
+
+    # Create logs directory and empty log file
+    LOGS_DIR="$DEST_DIR/logs"
+    LOG_FILE="$LOGS_DIR/adobe_cep_logs.txt"
+    sudo mkdir -p "$LOGS_DIR"
+    sudo touch "$LOG_FILE"
+    
+    # Set permissions to allow writing
+    sudo chmod 755 "$LOGS_DIR"
+    sudo chmod 666 "$LOG_FILE"
+    
+    # Change ownership to the current user
+    CURRENT_USER=$(whoami)
+    sudo chown -R $CURRENT_USER:staff "$LOGS_DIR"
+    
+    echo "Logs directory and file created with write permissions."
 else
     echo "Failed to copy extension files. Please make sure you have the necessary permissions."
     exit 1
