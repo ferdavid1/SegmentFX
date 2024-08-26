@@ -48,7 +48,7 @@ function getSequenceDetails() {
 // Function to perform auto segmentation
 function autoSegment(objectCount) {
     var extensionRoot = File($.fileName).parent.fsName;
-    var pythonScript = joinPath("python", "segmentation.py");
+    var pythonScript = joinPath("/python", "segmentation.py");
     var activeSequence = getActiveSequence();
     
     if (!activeSequence) {
@@ -80,7 +80,7 @@ function autoSegment(objectCount) {
 // Function to perform manual segmentation
 function manualSegment(imageData) {
     var extensionRoot = File($.fileName).parent.fsName;
-    var pythonScript = joinPath(extensionRoot, "python", "segmentation.py");
+    var pythonScript = joinPath("/python", "segmentation.py");
     var tempFile = new File(joinPath(Folder.temp.fsName, "temp_drawing.png"));
     tempFile.open('w');
     tempFile.encoding = "BINARY";
@@ -170,10 +170,10 @@ function importMasksToTimeline(outputDir) {
 // Function to get all effects (built-in and custom)
 function getAllEffects() {
     var extensionRoot = File($.fileName).parent.fsName;
-    var effectsFile = joinPath(extensionRoot, "data", "premiere_effects.json");
+    var effectsFile = File(joinPath(extensionRoot, "data", "premiere_effects.json"));
     var effects = [];
 
-    if (File(effectsFile).exists) {
+    if (effectsFile).exists {
         effectsFile.open('r');
         var content = effectsFile.read();
         effectsFile.close();
