@@ -2,7 +2,7 @@
 <ExtensionList>
     <Extension Id="com.videosegmentation.panel">
         <HostList>
-            <Host Name="PPRO" Port="7777"/>
+            <Host Name="PPRO" Port="8081"/>
         </HostList>
     </Extension>
 </ExtensionList>
