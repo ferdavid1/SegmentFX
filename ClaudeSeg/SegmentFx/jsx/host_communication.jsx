@@ -14,6 +14,31 @@ function getActiveSequence() {
     return app.project.activeSequence;
 }
 
+// Function to get project details
+function getProjectDetails() {
+    var project = getCurrentProject();
+    return JSON.stringify({
+        name: project.name,
+        path: project.path,
+        sequences: project.sequences.numSequences
+    });
+}
+
+// Function to get sequence details
+function getSequenceDetails() {
+    var sequence = getActiveSequence();
+    if (sequence) {
+        return JSON.stringify({
+            name: sequence.name,
+            framerate: sequence.framerate.toString(),
+            duration: sequence.duration.seconds,
+            videoTracks: sequence.videoTracks.numTracks,
+            audioTracks: sequence.audioTracks.numTracks
+        });
+    }
+    return JSON.stringify(null);
+}
+
 // Function to perform auto segmentation
 function autoSegment(objectCount) {
     var pythonScript = File($.fileName).parent.parent.fsName + "/python/segmentation.py";
@@ -90,6 +115,8 @@ function importMasksToTimeline(outputDir) {
     // Create a new video track for the masks
     var maskTrack = sequence.videoTracks[sequence.videoTracks.numTracks];
     maskTrack.overwriteClip(maskVideo[0], sequence.getPlayerPosition());
+    // maybe: var maskClip = maskTrack.insertClip(maskVideo, sequence.getPlayerPosition());
+
 
     // Load and parse the metadata
     var metadataFile = new File(outputDir + "/mask_metadata.json");
@@ -113,7 +140,7 @@ function importMasksToTimeline(outputDir) {
         var clipItem = track.insertClip(adjustmentLayer, sequence.getPlayerPosition());
         
         // Apply Track Matte Key effect
-        var tmkEffect = clipItem.components.addVideoEffect(qe.project.getVideoEffectByName("Track Matte Key"));
+        var tmkEffect = clipItem.components.addVideoEffect(app.project.interpreted("Track Matte Key"));
         
         // Set the matte layer to the mask video track
         tmkEffect.properties.getParamForDisplayName("Matte Layer").setValue(maskTrack.index + 1);
@@ -126,12 +153,22 @@ function importMasksToTimeline(outputDir) {
 
 // Function to get all effects (built-in and custom)
 function getAllEffects() {
-    var builtInEffects = [];
-    for (var i = 0; i < qe.project.numVideoEffects; i++) {
-        builtInEffects.push({
-            name: qe.project.getVideoEffectName(i),
-            type: "built-in"
-        });
+    var effectsFile = new File($.fileName).parent.parent.fsName + "/data/premiere_effects.json";
+    var effects = [];
+
+    if (effectsFile.exists) {
+        effectsFile.open('r');
+        var content = effectsFile.read();
+        effectsFile.close();
+
+        try {
+            var jsonContent = JSON.parse(content);
+            effects = jsonContent.effects;
+        } catch (e) {
+            alert("Error parsing effects file: " + e.toString());
+        }
+    } else {
+        alert("Effects file not found: " + effectsFile.fsName);
     }
     
     var customEffects = [
@@ -140,25 +177,42 @@ function getAllEffects() {
         // Add more custom effects here as you implement them
     ];
     
-    return JSON.stringify(builtInEffects.concat(customEffects));
+    return JSON.stringify(effects.concat(customEffects));
 }
 
 // Function to apply a Premiere Pro effect to a clip
 function applyEffectToClip(clipIndex, trackIndex, effectName) {
     var sequence = getActiveSequence();
-    var clip = sequence.videoTracks[trackIndex].clips[clipIndex];
-    var effect = qe.project.getVideoEffectByName(effectName);
-    if (effect && clip) {
-        clip.components.addVideoEffect(effect);
-        return JSON.stringify({ success: true, message: "Effect applied successfully" });
+    if (!sequence) return JSON.stringify({ error: "No active sequence" });
+
+    var track = sequence.videoTracks[trackIndex];
+    if (!track) return JSON.stringify({ error: "Track not found" });
+
+    var clip = track.clips[clipIndex];
+    if (!clip) return JSON.stringify({ error: "Clip not found" });
+
+    try {
+        var effect = clip.components.addVideoEffect(app.project.interpreted(effectName));
+        if (effect) {
+            return JSON.stringify({ success: true, message: "Effect applied successfully" });
+        } else {
+            return JSON.stringify({ error: "Failed to apply effect" });
+        }
+    } catch (e) {
+        return JSON.stringify({ error: "Error applying effect: " + e.toString() });
     }
-    return JSON.stringify({ error: "Failed to apply effect" });
 }
 
 // Function to apply custom effect
 function applyCustomEffect(clipIndex, trackIndex, effectName, parameters) {
     var sequence = getActiveSequence();
-    var clip = sequence.videoTracks[trackIndex].clips[clipIndex];
+    if (!sequence) return JSON.stringify({ error: "No active sequence" });
+
+    var track = sequence.videoTracks[trackIndex];
+    if (!track) return JSON.stringify({ error: "Track not found" });
+
+    var clip = track.clips[clipIndex];
+    if (!clip) return JSON.stringify({ error: "Clip not found" });
     
     var pythonScript = File($.fileName).parent.parent.fsName + "/python/custom_effects.py";
     var command = "python \"" + pythonScript + "\" \"" + clip.projectItem.getMediaPath() + "\" \"" + effectName + "\" '" + JSON.stringify(parameters) + "'";
@@ -181,56 +235,19 @@ function applyCustomEffect(clipIndex, trackIndex, effectName, parameters) {
 
 // Function to apply multiple effects
 function applyMultipleEffects(clipIndex, trackIndex, effects) {
-    var sequence = getActiveSequence();
-    if (!sequence) {
-        return JSON.stringify({ error: "No active sequence" });
-    }
-    
-    if (trackIndex < 0 || trackIndex >= sequence.videoTracks.numTracks) {
-        return JSON.stringify({ error: "Invalid track index" });
-    }
-    
-    var track = sequence.videoTracks[trackIndex];
-    if (clipIndex < 0 || clipIndex >= track.clips.numItems) {
-        return JSON.stringify({ error: "Invalid clip index" });
-    }
+    var results = [];
     
     var clip = track.clips[clipIndex];
     
     for (var i = 0; i < effects.length; i++) {
         var effect = effects[i];
         if (effect.type === "built-in") {
-            var premierEffect = qe.project.getVideoEffectByName(effect.name);
-            clip.components.addVideoEffect(premierEffect);
+            var result = JSON.parse(applyEffectToClip(clipIndex, trackIndex, effects[i].name));
+            results.push(result);
         } else if (effect.type === "custom") {
             applyCustomEffect(clipIndex, trackIndex, effect.name.toLowerCase(), effect.parameters);
         }
     }
     
     return JSON.stringify({ success: true, message: "Multiple effects applied successfully" });
-}
-
-// Function to get project details
-function getProjectDetails() {
-    var project = getCurrentProject();
-    return JSON.stringify({
-        name: project.name,
-        path: project.path,
-        sequences: project.sequences.numSequences
-    });
-}
-
-// Function to get sequence details
-function getSequenceDetails() {
-    var sequence = getActiveSequence();
-    if (sequence) {
-        return JSON.stringify({
-            name: sequence.name,
-            framerate: sequence.framerate.toString(),
-            duration: sequence.duration.seconds,
-            videoTracks: sequence.videoTracks.numTracks,
-            audioTracks: sequence.audioTracks.numTracks
-        });
-    }
-    return JSON.stringify(null);
 }
