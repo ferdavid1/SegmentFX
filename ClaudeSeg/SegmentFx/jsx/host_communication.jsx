@@ -9,12 +9,8 @@ function testExtendScriptFunction() {
     var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
     var sequence = app.project.activeSequence;
     return JSON.stringify({
-        name: sequence.name,
-        framerate: sequence.framerate.toString(),
-        duration: sequence.duration.seconds,
-        videoTracks: sequence.videoTracks.numTracks,
-        audioTracks: sequence.audioTracks.numTracks
-    });
+            name: sequence.name
+        });
 }
 
 // Function to get the current project
