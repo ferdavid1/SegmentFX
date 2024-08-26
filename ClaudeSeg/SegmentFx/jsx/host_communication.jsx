@@ -1,7 +1,7 @@
 // host_communication.jsx
 
 function testExtendScriptFunction() {
-    return "ExtendScript is working!" + File($.fileName);
+    return "ExtendScript is working!" + File($.fileName).parent.fsName + "CEP/extensions/SegmentFx/;
 }
 
 // Function to get the current project
