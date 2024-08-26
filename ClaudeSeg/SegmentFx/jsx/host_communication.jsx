@@ -1,7 +1,7 @@
 // host_communication.jsx
 
 function testExtendScriptFunction() {
-    return "ExtendScript is working!";
+    return "ExtendScript is working!" + File($.fileName).parent.parent.fsName;
 }
 
 // Function to get the current project
@@ -54,15 +54,19 @@ function autoSegment(objectCount) {
     var command = "python \"" + pythonScript + "\" auto \"" + videoPath + "\" " + objectCount;
     
     try {
+        $.write(JSON.stringify({ status: "loading", message: "Starting auto segmentation..." }));
+
         var result = system.callSystem(command);
         
         // Process result and import masks
-        var outputDir = JSON.parse(result).output_dir;
+        var parsedResult = JSON.parse(result);
+        var outputDir = parsedResult.output_dir;
         importMasksToTimeline(outputDir);
+        parsedResult.status = "complete";
         
-        return JSON.stringify({ success: true, message: "Auto segmentation complete" });
+        return JSON.stringify(parsedResult);
     } catch (error) {
-        return JSON.stringify({ error: error.toString() });
+        return JSON.stringify({ status: "error", error: error.toString() });
     }
 }
 
@@ -87,15 +91,19 @@ function manualSegment(imageData) {
     var command = "python \"" + pythonScript + "\" manual \"" + videoPath + "\" \"" + tempFile.fsName + "\"";
     
     try {
+        $.write(JSON.stringify({ status: "loading", message: "Starting manual segmentation..." }));
+
         var result = system.callSystem(command);
         
         // Process result and import masks
-        var outputDir = JSON.parse(result).output_dir;
+        var parsedResult = JSON.parse(result);
+        var outputDir = parsedResult.output_dir;
         importMasksToTimeline(outputDir);
+        parsedResult.status = "complete";
         
-        return JSON.stringify({ success: true, message: "Manual segmentation complete" });
+        return JSON.stringify(parsedResult);
     } catch (error) {
-        return JSON.stringify({ error: error.toString() });
+        return JSON.stringify({ status: "error", error: error.toString() });
     }
 }
 
@@ -153,7 +161,7 @@ function importMasksToTimeline(outputDir) {
 
 // Function to get all effects (built-in and custom)
 function getAllEffects() {
-    var effectsFile = app.getSystemPath(SystemPath.EXTENSION) + "/data/premiere_effects.json"
+    var effectsFile = new File($.fileName).parent.parent.fsName + "/data/premiere_effects.json";
     var effects = [];
 
     if (effectsFile.exists) {

@@ -15,6 +15,7 @@
     // HostCommunication.debugLog('Immediate debug log test');
     // HostCommunication.logError(new Error('Test error logging'));
 
+
     // Function to load all effects
     function loadEffects() {
         return HostCommunication.getAvailableEffects()

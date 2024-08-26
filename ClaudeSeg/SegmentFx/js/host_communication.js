@@ -20,6 +20,7 @@ var HostCommunication = (function() {
         });
     }
 
+
     function getLogPath() {
         // Use the extension's own directory for logs
         return csInterface.getSystemPath(SystemPath.EXTENSION) + '/logs/adobe_cep_logs.txt';
@@ -86,14 +87,74 @@ var HostCommunication = (function() {
         });
     }
 
+    function showLoading(message) {
+        document.getElementById('loadingIndicator').style.display = 'flex';
+        document.getElementById('loadingMessage').textContent = message;
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingIndicator').style.display = 'none';
+    }
+
+    // Add event listeners for the loading events
+    csInterface.addEventListener("com.example.showloading", function(event) {
+        showLoading(event.data);
+    });
+
+    csInterface.addEventListener("com.example.hideloading", function(event) {
+        hideLoading();
+    });
+
     // Function to perform auto segmentation
     function autoSegment(objectCount) {
-        return callExtendScript('autoSegment', objectCount);
+        return new Promise((resolve, reject) => {
+            csInterface.evalScript(`autoSegment(${objectCount})`, (result) => {
+                try {
+                    const parsedResult = JSON.parse(result);
+                    if (parsedResult.status === "loading") {
+                        // Show loading indicator
+                        showLoading(parsedResult.message);
+                    } else if (parsedResult.status === "complete") {
+                        // Hide loading indicator and resolve with the result
+                        hideLoading();
+                        resolve(parsedResult);
+                    } else if (parsedResult.status === "error") {
+                        // Hide loading indicator and reject with the error
+                        hideLoading();
+                        reject(new Error(parsedResult.error));
+                    }
+                } catch (error) {
+                    hideLoading();
+                    reject(error);
+                }
+            });
+        });
     }
 
     // Function to perform manual segmentation
     function manualSegment(imageData) {
-        return callExtendScript('manualSegment', imageData);
+        return new Promise((resolve, reject) => {
+            csInterface.evalScript(`manualSegment("${imageData}")`, (result) => {
+                try {
+                    const parsedResult = JSON.parse(result);
+                    if (parsedResult.status === "loading") {
+                        // Show loading indicator
+                        showLoading(parsedResult.message);
+                    } else if (parsedResult.status === "complete") {
+                        // Hide loading indicator and resolve with the result
+                        hideLoading();
+                        resolve(parsedResult);
+                    } else if (parsedResult.status === "error") {
+                        // Hide loading indicator and reject with the error
+                        hideLoading();
+                        reject(new Error(parsedResult.error));
+                    }
+                } catch (error) {
+                    hideLoading();
+                    reject(error);
+                }
+            });
+        });
     }
 
     // Function to get project details
