@@ -102,8 +102,6 @@
     { "name": "Warp Stabilizer", "type": "video" },
     { "name": "Wave Warp", "type": "video" },
     { "name": "ZDepth Composite", "type": "video" },
-
-    // Transitions
     { "name": "Cross Dissolve", "type": "transition" },
     { "name": "Dip to Black", "type": "transition" },
     { "name": "Dip to White", "type": "transition" },
