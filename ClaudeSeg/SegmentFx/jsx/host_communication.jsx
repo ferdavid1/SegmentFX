@@ -170,7 +170,8 @@ function importMasksToTimeline(outputDir) {
 // Function to get all effects (built-in and custom)
 function getAllEffects() {
     var extensionRoot = File($.fileName).parent.fsName;
-    var effectsFile = File(joinPath(extensionRoot, "data", "premiere_effects.json"));
+    var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
+    var effectsFile = File(joinPath(fullpath, "data", "premiere_effects.json"));
     var effects = [];
 
     if (effectsFile.exists) {
