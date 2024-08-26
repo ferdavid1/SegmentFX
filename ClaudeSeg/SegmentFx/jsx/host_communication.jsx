@@ -10,9 +10,7 @@ function testExtendScriptFunction() {
     var sequence = app.project.activeSequence;
     return JSON.stringify({
             name: sequence.name,
-            duration: sequence.duration.seconds,
-            videoTracks: sequence.videoTracks.numTracks,
-            audioTracks: sequence.audioTracks.numTracks
+            framerate: sequence.framerate.toString()
         });
 }
 
