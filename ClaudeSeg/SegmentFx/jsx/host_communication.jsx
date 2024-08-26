@@ -1,7 +1,7 @@
 // host_communication.jsx
 
 function testExtendScriptFunction() {
-    return "ExtendScript is working!" + File($.fileName).fsName;
+    return "ExtendScript is working!" + File($.fileName);
 }
 
 // Function to get the current project
