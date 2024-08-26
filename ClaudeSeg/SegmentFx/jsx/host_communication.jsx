@@ -173,7 +173,7 @@ function getAllEffects() {
     var effectsFile = File(joinPath(extensionRoot, "data", "premiere_effects.json"));
     var effects = [];
 
-    if (effectsFile).exists {
+    if (effectsFile.exists) {
         effectsFile.open('r');
         var content = effectsFile.read();
         effectsFile.close();
