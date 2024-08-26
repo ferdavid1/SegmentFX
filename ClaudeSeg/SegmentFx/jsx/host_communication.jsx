@@ -1,7 +1,7 @@
 // host_communication.jsx
 
 function joinPath() {
-    return Array.prototype.slice.call(arguments).join(File.pathSeparator);
+    return Array.prototype.slice.call(arguments).join("/");
 }
 
 function testExtendScriptFunction() {
@@ -173,7 +173,7 @@ function getAllEffects() {
     var effectsFile = joinPath(extensionRoot, "data", "premiere_effects.json");
     var effects = [];
 
-    if (effectsFile.exists) {
+    if (File(effectsFile).exists) {
         effectsFile.open('r');
         var content = effectsFile.read();
         effectsFile.close();
