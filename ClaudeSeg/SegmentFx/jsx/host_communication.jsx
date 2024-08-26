@@ -1,7 +1,7 @@
 // host_communication.jsx
 
 function testExtendScriptFunction() {
-    return "ExtendScript is working!" + File($.fileName).parent.fsName + "CEP/extensions/SegmentFx/";
+    return "ExtendScript is working! Path is: " + File($.fileName).parent.fsName + "/CEP/extensions/SegmentFx/";
 }
 
 // Function to get the current project
@@ -41,7 +41,7 @@ function getSequenceDetails() {
 
 // Function to perform auto segmentation
 function autoSegment(objectCount) {
-    var pythonScript = File($.fileName).parent.parent.fsName + "/python/segmentation.py";
+    var pythonScript = File($.fileName).parent.fsName + "/python/segmentation.py";
     var activeSequence = getActiveSequence();
     
     if (!activeSequence) {
@@ -72,7 +72,7 @@ function autoSegment(objectCount) {
 
 // Function to perform manual segmentation
 function manualSegment(imageData) {
-    var pythonScript = File($.fileName).parent.parent.fsName + "/python/segmentation.py";
+    var pythonScript = File($.fileName).parent.fsName + "/python/segmentation.py";
     var tempFile = new File(Folder.temp.fsName + "/temp_drawing.png");
     tempFile.open('w');
     tempFile.encoding = "BINARY";
@@ -161,7 +161,7 @@ function importMasksToTimeline(outputDir) {
 
 // Function to get all effects (built-in and custom)
 function getAllEffects() {
-    var effectsFile = new File($.fileName).parent.parent.fsName + "/data/premiere_effects.json";
+    var effectsFile = new File($.fileName).parent.fsName + "/data/premiere_effects.json";
     var effects = [];
 
     if (effectsFile.exists) {
@@ -222,7 +222,7 @@ function applyCustomEffect(clipIndex, trackIndex, effectName, parameters) {
     var clip = track.clips[clipIndex];
     if (!clip) return JSON.stringify({ error: "Clip not found" });
     
-    var pythonScript = File($.fileName).parent.parent.fsName + "/python/custom_effects.py";
+    var pythonScript = File($.fileName).parent.fsName + "/python/custom_effects.py";
     var command = "python \"" + pythonScript + "\" \"" + clip.projectItem.getMediaPath() + "\" \"" + effectName + "\" '" + JSON.stringify(parameters) + "'";
     
     try {
