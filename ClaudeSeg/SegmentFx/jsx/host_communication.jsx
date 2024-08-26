@@ -1,5 +1,9 @@
 // host_communication.jsx
 
+function joinPath() {
+    return Array.prototype.slice.call(arguments).join(File.separator);
+}
+
 function testExtendScriptFunction() {
     var extensionRoot = File($.fileName).parent.fsName;
     return "ExtendScript is working! Path found: " + joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx").exists;
