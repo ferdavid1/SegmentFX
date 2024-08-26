@@ -7,7 +7,14 @@ function joinPath() {
 function testExtendScriptFunction() {
     var extensionRoot = File($.fileName).parent.fsName;
     var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
-    return app.project.activeSequence;
+    var sequence = app.project.activeSequence;
+    return JSON.stringify({
+        name: sequence.name,
+        framerate: sequence.framerate.toString(),
+        duration: sequence.duration.seconds,
+        videoTracks: sequence.videoTracks.numTracks,
+        audioTracks: sequence.audioTracks.numTracks
+    });
 }
 
 // Function to get the current project
