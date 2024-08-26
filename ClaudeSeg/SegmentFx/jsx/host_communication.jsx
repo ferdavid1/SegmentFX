@@ -1,7 +1,8 @@
 // host_communication.jsx
 
 function testExtendScriptFunction() {
-    return "ExtendScript is working! Path is: " + File($.fileName).parent.fsName + "/CEP/extensions/SegmentFx/";
+    var extensionRoot = File($.fileName).parent.fsName;
+    return "ExtendScript is working! Path found: " + joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx").exists;
 }
 
 // Function to get the current project
@@ -41,7 +42,8 @@ function getSequenceDetails() {
 
 // Function to perform auto segmentation
 function autoSegment(objectCount) {
-    var pythonScript = File($.fileName).parent.fsName + "/python/segmentation.py";
+    var extensionRoot = File($.fileName).parent.fsName;
+    var pythonScript = joinPath(extensionRoot, "python", "segmentation.py");
     var activeSequence = getActiveSequence();
     
     if (!activeSequence) {
@@ -72,8 +74,9 @@ function autoSegment(objectCount) {
 
 // Function to perform manual segmentation
 function manualSegment(imageData) {
-    var pythonScript = File($.fileName).parent.fsName + "/python/segmentation.py";
-    var tempFile = new File(Folder.temp.fsName + "/temp_drawing.png");
+    var extensionRoot = File($.fileName).parent.fsName;
+    var pythonScript = joinPath(extensionRoot, "python", "segmentation.py");
+    var tempFile = new File(joinPath(Folder.temp.fsName, "temp_drawing.png"));
     tempFile.open('w');
     tempFile.encoding = "BINARY";
     tempFile.write(imageData.split(',')[1]);
@@ -161,7 +164,8 @@ function importMasksToTimeline(outputDir) {
 
 // Function to get all effects (built-in and custom)
 function getAllEffects() {
-    var effectsFile = new File($.fileName).parent.fsName + "/data/premiere_effects.json";
+    var extensionRoot = File($.fileName).parent.fsName;
+    var effectsFile = joinPath(extensionRoot, "data", "premiere_effects.json");
     var effects = [];
 
     if (effectsFile.exists) {
