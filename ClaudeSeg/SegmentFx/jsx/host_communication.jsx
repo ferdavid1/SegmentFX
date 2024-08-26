@@ -7,7 +7,7 @@ function joinPath() {
 function testExtendScriptFunction() {
     var extensionRoot = File($.fileName).parent.fsName;
     var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
-    return "ExtendScript is working! Path: " + fullpath + " and it exists?: " + File(fullpath).exists;
+    return app.project.activeSequence;
 }
 
 // Function to get the current project

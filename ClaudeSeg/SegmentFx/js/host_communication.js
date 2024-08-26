@@ -20,7 +20,6 @@ var HostCommunication = (function() {
         });
     }
 
-
     function getLogPath() {
         // Use the extension's own directory for logs
         return csInterface.getSystemPath(SystemPath.EXTENSION) + '/logs/adobe_cep_logs.txt';
