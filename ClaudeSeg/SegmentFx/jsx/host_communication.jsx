@@ -7,13 +7,7 @@ function joinPath() {
 function testExtendScriptFunction() {
     var extensionRoot = File($.fileName).parent.fsName;
     var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
-    var sequence = app.project.activeSequence;
-    return JSON.stringify({
-            name: sequence.name,
-            duration: sequence.end.seconds - sequence.zeroPoint.seconds,
-            videoTracks: sequence.videoTracks.numTracks,
-            audioTracks: sequence.audioTracks.numTracks
-        });
+    return "ExtendScript is working! Path: " + fullpath + " and it exists?: " + File(fullpath).exists;
 }
 
 // Function to get the current project
@@ -42,8 +36,6 @@ function getSequenceDetails() {
     if (sequence) {
         return JSON.stringify({
             name: sequence.name,
-            framerate: sequence.framerate.toString(),
-            duration: sequence.duration.seconds,
             videoTracks: sequence.videoTracks.numTracks,
             audioTracks: sequence.audioTracks.numTracks
         });
