@@ -9,7 +9,10 @@ function testExtendScriptFunction() {
     var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
     var sequence = app.project.activeSequence;
     return JSON.stringify({
-            name: sequence.name
+            name: sequence.name,
+            duration: sequence.duration.seconds,
+            videoTracks: sequence.videoTracks.numTracks,
+            audioTracks: sequence.audioTracks.numTracks
         });
 }
 
