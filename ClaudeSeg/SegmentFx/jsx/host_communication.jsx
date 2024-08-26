@@ -47,7 +47,7 @@ function getSequenceDetails() {
 
 // Function to perform auto segmentation
 function autoSegment(objectCount) {
-    // var extensionRoot = File($.fileName).parent.fsName;
+    var extensionRoot = File($.fileName).parent.fsName;
     var pythonScript = joinPath("python", "segmentation.py");
     var activeSequence = getActiveSequence();
     
@@ -58,7 +58,7 @@ function autoSegment(objectCount) {
     
     var videoPath = activeSequence.videoTracks[0].clips[0].projectItem.getMediaPath();
     
-    var command = "python \"" + pythonScript + "\" auto \"" + videoPath + "\" " + objectCount;
+    var command = "cd " + extensionRoot + " && " + "python \"" + pythonScript + "\" auto \"" + videoPath + "\" " + objectCount;
     
     try {
         $.write(JSON.stringify({ status: "loading", message: "Starting auto segmentation..." }));
@@ -96,7 +96,7 @@ function manualSegment(imageData) {
     
     var videoPath = activeSequence.videoTracks[0].clips[0].projectItem.getMediaPath();
     
-    var command = "python \"" + pythonScript + "\" manual \"" + videoPath + "\" \"" + tempFile.fsName + "\"";
+    var command = "cd " + extensionRoot + " && " + "python \"" + pythonScript + "\" manual \"" + videoPath + "\" \"" + tempFile.fsName + "\"";
     
     try {
         $.write(JSON.stringify({ status: "loading", message: "Starting manual segmentation..." }));
