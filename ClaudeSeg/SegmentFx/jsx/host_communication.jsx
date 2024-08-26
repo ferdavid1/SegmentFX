@@ -1,13 +1,13 @@
 // host_communication.jsx
 
 function joinPath() {
-    return Array.prototype.slice.call(arguments).join(File.separator);
+    return Array.prototype.slice.call(arguments).join(File.pathSeparator);
 }
 
 function testExtendScriptFunction() {
     var extensionRoot = File($.fileName).parent.fsName;
     var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
-    return "ExtendScript is working! Path: " + File(fullpath) + " and it exists?: " + File(fullpath).exists;
+    return "ExtendScript is working! Path: " + fullpath + " and it exists?: " + File(fullpath).exists;
 }
 
 // Function to get the current project
@@ -47,8 +47,8 @@ function getSequenceDetails() {
 
 // Function to perform auto segmentation
 function autoSegment(objectCount) {
-    var extensionRoot = File($.fileName).parent.fsName;
-    var pythonScript = joinPath(extensionRoot, "python", "segmentation.py");
+    // var extensionRoot = File($.fileName).parent.fsName;
+    var pythonScript = joinPath("python", "segmentation.py");
     var activeSequence = getActiveSequence();
     
     if (!activeSequence) {
