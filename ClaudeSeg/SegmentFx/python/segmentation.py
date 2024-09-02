@@ -78,11 +78,11 @@ def auto_segment(video_path, object_count, batch_size=6):
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         current_batch.append(frame_rgb)
         if len(current_batch) == batch_size:
-            batches.append((current_batch, object_count, mask_generator))
+            batches.append((current_batch, mask_generator, object_count))
             current_batch = []
     
     if current_batch:  # Add any remaining frames
-        batches.append((current_batch, object_count, mask_generator))
+        batches.append((current_batch, mask_generator, object_count))
 
     video.release()
 
