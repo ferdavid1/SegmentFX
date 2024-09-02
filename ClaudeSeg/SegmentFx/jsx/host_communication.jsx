@@ -47,7 +47,7 @@ function getSequenceDetails() {
 function autoSegment(objectCount) {
     var extensionRoot = File($.fileName).parent.fsName;
     var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
-    var pythonScript = joinPath(fullpath, "python", "/segmentation.py");
+    var pythonScript = joinPath(fullpath, "python", "segmentation.py");
     var activeSequence = getActiveSequence();
     
     if (!activeSequence) {
@@ -63,7 +63,7 @@ function autoSegment(objectCount) {
         $.write(JSON.stringify({ status: "loading", message: "Starting auto segmentation..." }));
 
         // Execute the Python script
-        $.evalFile(new File(joinPath(fullpath, "jsx", "/execute_python.jsx")));
+        $.evalFile(new File(joinPath(fullpath, "jsx", "execute_python.jsx")));
         var result = executePython(pythonScript, ["auto", videoPath, objectCount]);
         
         // Process result and import masks
@@ -85,7 +85,7 @@ function autoSegment(objectCount) {
 function manualSegment(imageData) {
     var extensionRoot = File($.fileName).parent.fsName;
     var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
-    var pythonScript = joinPath(fullpath, "python", "/segmentation.py");
+    var pythonScript = joinPath(fullpath, "python", "segmentation.py");
     var tempFile = new File(joinPath(Folder.temp.fsName, "temp_drawing.png"));
     tempFile.open('w');
     tempFile.encoding = "BINARY";
@@ -107,7 +107,7 @@ function manualSegment(imageData) {
         $.write(JSON.stringify({ status: "loading", message: "Starting manual segmentation..." }));
 
         // Execute the Python script
-        $.evalFile(new File(joinPath(fullpath, "jsx", "/execute_python.jsx")));
+        $.evalFile(new File(joinPath(fullpath, "jsx", "execute_python.jsx")));
         var result = executePython(pythonScript, ["manual", videoPath, tempFile.fsName]);
         
         tempFile.remove();
@@ -247,12 +247,12 @@ function applyCustomEffect(clipIndex, trackIndex, effectName, parameters) {
     var extensionRoot = File($.fileName).parent.fsName;
     var fullpath = joinPath(extensionRoot,  "CEP", "extensions", "SegmentFx");
     
-    var pythonScript = File(joinPath(fullpath, "python", "/custom_effects.py"));
+    var pythonScript = File(joinPath(fullpath, "python", "custom_effects.py"));
     // var command = "python \"" + pythonScript + "\" \"" + clip.projectItem.getMediaPath() + "\" \"" + effectName + "\" '" + JSON.stringify(parameters) + "'";
     
     try {
         // Execute the Python script
-        $.evalFile(new File(joinPath(fullpath, "jsx", "/execute_python.jsx")));
+        $.evalFile(new File(joinPath(fullpath, "jsx", "execute_python.jsx")));
         var result = executePython(pythonScript, [clip.projectItem.getMediaPath(), effectName, JSON.stringify(parameters)]);
 
         var parsedResult = JSON.parse(result);
