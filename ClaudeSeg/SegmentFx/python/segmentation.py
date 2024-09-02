@@ -8,6 +8,8 @@ import sys
 import time
 # import torch
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import warnings
+warnings.filterwarnings('ignore')
 
 def manual_process_batch(batch_frames, predictor, user_mask, input_box):
     predictor.set_image(np.stack(batch_frames))
