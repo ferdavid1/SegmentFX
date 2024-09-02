@@ -1,5 +1,6 @@
 import cv2
 import json
+import multiprocessing
 import numpy as np
 import os
 from PIL import Image
