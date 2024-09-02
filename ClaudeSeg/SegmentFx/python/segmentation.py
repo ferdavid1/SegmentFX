@@ -44,8 +44,9 @@ def load_model(manual=False):
         mask_generator = SamPredictor(mobile_sam)
     return mask_generator
 
-def auto_segment(video_path, object_count, batch_size=8):
-    mask_generator = load_model()
+def auto_segment(video_path, object_count, batch_size=6):
+    start_time = time.time()
+    
     video = cv2.VideoCapture(video_path)
     
     frame_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -56,51 +57,58 @@ def auto_segment(video_path, object_count, batch_size=8):
     output_dir = "segmentation_output"
     os.makedirs(output_dir, exist_ok=True)
 
-    all_masks = []
-    mask_metadata = []
+    # Load model once
+    mask_generator = load_model()
 
     # Prepare batches
     batches = []
     current_batch = []
-    for frame_num in range(frame_count):
+    for _ in range(frame_count):
         ret, frame = video.read()
         if not ret:
             break
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         current_batch.append(frame_rgb)
-        if len(current_batch) == batch_size or frame_num == frame_count - 1:
-            batches.append((current_batch, mask_generator, object_count))
+        if len(current_batch) == batch_size:
+            batches.append((current_batch, object_count, mask_generator))
             current_batch = []
+    
+    if current_batch:  # Add any remaining frames
+        batches.append((current_batch, object_count, mask_generator))
+
+    video.release()
 
     # Process batches using multiprocessing
     with multiprocessing.Pool() as pool:
-        batch_results = pool.map(process_batch, batches)
+        all_results = pool.map(auto_process_batch, batches)
 
-    # Flatten batch results
-    for batch_idx, batch_result in enumerate(batch_results):
-        for frame_idx, frame_masks in enumerate(batch_result):
-            global_frame_num = batch_idx * batch_size + frame_idx
+    # Process results
+    all_masks = []
+    mask_metadata = []
+    frame_num = 0
+    for batch_result in all_results:
+        for frame_masks in batch_result:
             frame_mask_data = []
             for i, mask_data in enumerate(frame_masks):
                 mask = mask_data['segmentation'].astype(np.uint8) * 255
-                mask_filename = f"mask_frame{global_frame_num:04d}_object{i:02d}.png"
+                mask_filename = f"mask_frame{frame_num:04d}_object{i:02d}.png"
                 cv2.imwrite(os.path.join(output_dir, mask_filename), mask)
                 frame_mask_data.append(mask)
                 mask_metadata.append({
-                    'frame': global_frame_num,
+                    'frame': frame_num,
                     'object_id': i,
                     'filename': mask_filename,
-                    'bbox': mask_data['bbox'],
+                    'bbox': mask_data['bbox'].tolist(),
                     'area': float(mask_data['area']),
                     'stability_score': float(mask_data['stability_score'])
                 })
             all_masks.append(frame_mask_data)
 
-            if global_frame_num % 30 == 0:
-                progress = (global_frame_num + 1) / frame_count * 100
+            if frame_num % 30 == 0:
+                progress = (frame_num + 1) / frame_count * 100
                 print(f"Progress: {progress:.2f}%")
-
-    video.release()
+            
+            frame_num += 1
 
     # Save metadata as JSON
     with open(os.path.join(output_dir, 'mask_metadata.json'), 'w') as f:
@@ -116,8 +124,15 @@ def auto_segment(video_path, object_count, batch_size=8):
         out.write(combined_mask)
     out.release()
 
+    end_time = time.time()
+    total_time = end_time - start_time
+    frames_per_second = frame_count / total_time
+
     print(f"Segmentation complete. Output saved to {output_dir}")
-    return output_dir
+    print(f"Total processing time: {total_time:.2f} seconds")
+    print(f"Frames per second: {frames_per_second:.2f}")
+    
+    return output_dir, total_time, frames_per_second
 
 def manual_segment(video_path, mask_path, batch_size=32, skip_frames=2):
     predictor = load_model(manual=True)
