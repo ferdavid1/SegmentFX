@@ -22,10 +22,15 @@ def manual_process_batch(batch_frames, predictor, user_mask, input_box):
 def auto_process_batch(args):
     frames, mask_generator, object_count = args
     batch_results = []
+    batch_frame_num = 0
     for frame in frames:
         masks = mask_generator.generate(frame)
         top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
         batch_results.append(top_masks)
+        if frame_num % 30 == 0:
+            progress = (batch_frame_num + 1) / len(frames) * 100
+            print(f"Batch Segmentation Progress: {progress:.2f}%")
+            batch_frame_num += 1
     return batch_results
 
 def load_model(manual=False):
@@ -107,7 +112,7 @@ def auto_segment(video_path, object_count, batch_size=6):
 
             if frame_num % 30 == 0:
                 progress = (frame_num + 1) / frame_count * 100
-                print(f"Progress: {progress:.2f}%")
+                print(f"Writing Progress: {progress:.2f}%")
             
             frame_num += 1
 
