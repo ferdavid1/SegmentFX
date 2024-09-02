@@ -80,7 +80,7 @@ def auto_segment(video_path, object_count):
                 'frame': frame_num,
                 'object_id': i,
                 'filename': mask_filename,
-                'bbox': mask_data['bbox'].tolist(),  # Convert numpy array to list
+                'bbox': mask_data['bbox'],  # Convert numpy array to list
                 'area': float(mask_data['area']),  # Convert numpy float to Python float
                 'stability_score': float(mask_data['stability_score'])
             })
