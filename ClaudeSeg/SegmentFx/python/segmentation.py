@@ -86,7 +86,7 @@ def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
     # Start worker processes
     processes = []
     for _ in range(num_processes):
-        p = multiprocessing.Process(target=process_batch, args=(input_queue, output_queue, object_count))
+        p = multiprocessing.Process(target=auto_process_batch, args=(input_queue, output_queue, object_count))
         p.start()
         processes.append(p)
 
