@@ -7,7 +7,7 @@ import sys
 # import torch
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def process_batch(batch_frames, predictor, user_mask, input_box):
+def manual_process_batch(batch_frames, predictor, user_mask, input_box):
     predictor.set_image(np.stack(batch_frames))
     masks, _, _ = predictor.predict(
         point_coords=None,
@@ -17,6 +17,14 @@ def process_batch(batch_frames, predictor, user_mask, input_box):
     )
     return np.logical_and(masks, user_mask > 0).astype(np.uint8) * 255
 
+def auto_process_batch(args):
+    frames, mask_generator, object_count = args
+    batch_results = []
+    for frame in frames:
+        masks = mask_generator.generate(frame)
+        top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
+        batch_results.append(top_masks)
+    return batch_results
 
 def load_model(manual=False):
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
@@ -35,7 +43,7 @@ def load_model(manual=False):
         mask_generator = SamPredictor(mobile_sam)
     return mask_generator
 
-def auto_segment(video_path, object_count):
+def auto_segment(video_path, object_count, batch_size=8):
     mask_generator = load_model()
     video = cv2.VideoCapture(video_path)
     
@@ -44,53 +52,52 @@ def auto_segment(video_path, object_count):
     width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    # Create output directory
     output_dir = "segmentation_output"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Prepare mask storage
     all_masks = []
     mask_metadata = []
 
+    # Prepare batches
+    batches = []
+    current_batch = []
     for frame_num in range(frame_count):
         ret, frame = video.read()
         if not ret:
             break
-        
-        # Convert frame to RGB (MobileSAM expects RGB)
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
-        # Generate masks
-        masks = mask_generator.generate(frame_rgb)
-        
-        # Process the top N masks based on object_count
-        top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
-        
-        frame_masks = []
-        for i, mask_data in enumerate(top_masks):
-            mask = mask_data['segmentation'].astype(np.uint8) * 255
-            frame_masks.append(mask)
+        current_batch.append(frame_rgb)
+        if len(current_batch) == batch_size or frame_num == frame_count - 1:
+            batches.append((current_batch, mask_generator, object_count))
+            current_batch = []
 
-            # Save individual mask as image
-            mask_filename = f"mask_frame{frame_num:04d}_object{i:02d}.png"
-            cv2.imwrite(os.path.join(output_dir, mask_filename), mask)
+    # Process batches using multiprocessing
+    with multiprocessing.Pool() as pool:
+        batch_results = pool.map(process_batch, batches)
 
-            # Store metadata
-            mask_metadata.append({
-                'frame': frame_num,
-                'object_id': i,
-                'filename': mask_filename,
-                'bbox': mask_data['bbox'],  # Convert numpy array to list
-                'area': float(mask_data['area']),  # Convert numpy float to Python float
-                'stability_score': float(mask_data['stability_score'])
-            })
-        
-        all_masks.append(frame_masks)
-        
-        # Report progress
-        if frame_num % 30 == 0:
-            progress = (frame_num + 1) / frame_count * 100
-            print(f"Progress: {progress:.2f}%")
+    # Flatten batch results
+    for batch_idx, batch_result in enumerate(batch_results):
+        for frame_idx, frame_masks in enumerate(batch_result):
+            global_frame_num = batch_idx * batch_size + frame_idx
+            frame_mask_data = []
+            for i, mask_data in enumerate(frame_masks):
+                mask = mask_data['segmentation'].astype(np.uint8) * 255
+                mask_filename = f"mask_frame{global_frame_num:04d}_object{i:02d}.png"
+                cv2.imwrite(os.path.join(output_dir, mask_filename), mask)
+                frame_mask_data.append(mask)
+                mask_metadata.append({
+                    'frame': global_frame_num,
+                    'object_id': i,
+                    'filename': mask_filename,
+                    'bbox': mask_data['bbox'],
+                    'area': float(mask_data['area']),
+                    'stability_score': float(mask_data['stability_score'])
+                })
+            all_masks.append(frame_mask_data)
+
+            if global_frame_num % 30 == 0:
+                progress = (global_frame_num + 1) / frame_count * 100
+                print(f"Progress: {progress:.2f}%")
 
     video.release()
 
@@ -101,13 +108,11 @@ def auto_segment(video_path, object_count):
     # Create a video of all masks combined
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(os.path.join(output_dir, 'combined_masks.mp4'), fourcc, fps, (width, height), isColor=False)
-
     for frame_masks in all_masks:
         combined_mask = np.zeros((height, width), dtype=np.uint8)
         for mask in frame_masks:
             combined_mask = np.maximum(combined_mask, mask)
         out.write(combined_mask)
-
     out.release()
 
     print(f"Segmentation complete. Output saved to {output_dir}")
@@ -140,7 +145,7 @@ def manual_segment(video_path, mask_path, batch_size=32, skip_frames=2):
             if not batch_frames:
                 break
 
-            future = executor.submit(process_batch, batch_frames, predictor, user_mask, input_box)
+            future = executor.submit(manual_process_batch, batch_frames, predictor, user_mask, input_box)
             future_to_indices = (future, batch_indices)
 
             for future, indices in as_completed([future_to_indices]):
