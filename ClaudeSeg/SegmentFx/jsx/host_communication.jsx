@@ -61,7 +61,17 @@ function autoSegment(objectCount) {
     try {
         $.write(JSON.stringify({ status: "loading", message: "Starting auto segmentation..." }));
 
-        var result = system.callSystem(command);
+        // Create a temporary batch file
+        var tempFile = new File(Folder.temp.fsName + "/temp_command.bat");
+        tempFile.open("w");
+        tempFile.write(command);
+        tempFile.close();
+        
+        // Execute the batch file
+        var result = app.system('cmd.exe /c "' + tempFile.fsName + '"');
+        
+        // Delete the temporary file
+        tempFile.remove();
         
         // Process result and import masks
         var parsedResult = JSON.parse(result);
@@ -99,7 +109,18 @@ function manualSegment(imageData) {
     try {
         $.write(JSON.stringify({ status: "loading", message: "Starting manual segmentation..." }));
 
-        var result = system.callSystem(command);
+        // Create a temporary script file
+        var scriptFile = new File(Folder.temp.fsName + "/temp_manual_segment.bat");
+        scriptFile.open("w");
+        scriptFile.write(command);
+        scriptFile.close();
+        
+        // Execute the script
+        var result = app.system('cmd.exe /c "' + scriptFile.fsName + '"');
+        
+        // Delete the temporary files
+        scriptFile.remove();
+        tempFile.remove();
         
         // Process result and import masks
         var parsedResult = JSON.parse(result);
@@ -234,7 +255,18 @@ function applyCustomEffect(clipIndex, trackIndex, effectName, parameters) {
     var command = "python \"" + pythonScript + "\" \"" + clip.projectItem.getMediaPath() + "\" \"" + effectName + "\" '" + JSON.stringify(parameters) + "'";
     
     try {
-        var result = system.callSystem(command);
+        // Create a temporary script file
+        var scriptFile = new File(Folder.temp.fsName + "/temp_custom_effect.bat");
+        scriptFile.open("w");
+        scriptFile.write(command);
+        scriptFile.close();
+        
+        // Execute the script
+        var result = app.system('cmd.exe /c "' + scriptFile.fsName + '"');
+        
+        // Delete the temporary file
+        scriptFile.remove();
+
         var processedFramesPath = JSON.parse(result).output_path;
         
         // Create a custom effect in Premiere Pro
