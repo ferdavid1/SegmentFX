@@ -52,7 +52,7 @@ def load_model(manual=False):
         mask_generator = SamPredictor(mobile_sam)
     return mask_generator
 
-def auto_segment(video_path, object_count, batch_size=6):
+def auto_segment(video_path, object_count, batch_size=4):
     start_time = time.time()
     
     video = cv2.VideoCapture(video_path)
