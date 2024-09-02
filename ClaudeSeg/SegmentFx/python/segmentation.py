@@ -2,7 +2,7 @@ import sys
 import cv2
 import numpy as np
 from PIL import Image
-import torch
+# import torch
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def process_batch(batch_frames, predictor, user_mask, input_box):
@@ -163,8 +163,10 @@ def manual_segment(video_path, mask_path, batch_size=32, skip_frames=2):
 if __name__ == "__main__":
     mode = sys.argv[1]
     if mode == "auto":
-        object_count = int(sys.argv[2])
-        auto_segment("path_to_video", object_count)
+        video_path = str(sys.argv[2])
+        object_count = int(sys.argv[3])
+        auto_segment(video_path, object_count)
     elif mode == "manual":
-        mask_path = sys.argv[2]
-        manual_segment("path_to_video", mask_path)
+        video_path = str(sys.argv[2])
+        mask_path = sys.argv[3]
+        manual_segment(video_path, mask_path)
