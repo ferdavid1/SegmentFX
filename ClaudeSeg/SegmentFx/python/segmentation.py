@@ -29,7 +29,7 @@ def auto_process_batch(args):
         masks = mask_generator.generate(frame)
         top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
         batch_results.append(top_masks)
-        if frame_num % 30 == 0:
+        if batch_frame_num % 30 == 0:
             progress = (batch_frame_num + 1) / len(frames) * 100
             print(f"Batch Segmentation Progress: {progress:.2f}%")
             batch_frame_num += 1
