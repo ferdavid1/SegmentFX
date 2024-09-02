@@ -108,7 +108,7 @@ def auto_segment(video_path, object_count, batch_size=4):
                     'frame': frame_num,
                     'object_id': i,
                     'filename': mask_filename,
-                    'bbox': mask_data['bbox'].tolist(),
+                    'bbox': mask_data['bbox'],
                     'area': float(mask_data['area']),
                     'stability_score': float(mask_data['stability_score'])
                 })
