@@ -52,7 +52,7 @@ def load_model(manual=False):
         mask_generator = SamPredictor(mobile_sam)
     return mask_generator
 
-def auto_segment(video_path, object_count, batch_size=4):
+def auto_segment(video_path, object_count, batch_size=8):
     start_time = time.time()
     
     video = cv2.VideoCapture(video_path)
@@ -81,7 +81,7 @@ def auto_segment(video_path, object_count, batch_size=4):
         if frames:
             batches.append((frames, object_count))
         
-        if len(batches) % 10 == 0:
+        if len(batches) % 50 == 0:
             print(f"Prepared {len(batches)} batches...")
 
     video.release()
@@ -90,7 +90,7 @@ def auto_segment(video_path, object_count, batch_size=4):
 
     # Process batches using multiprocessing
     with multiprocessing.Pool() as pool:
-        all_results = pool.map(process_batch, batches)
+        all_results = pool.map(auto_process_batch, batches)
 
     # Process results
     all_masks = []
