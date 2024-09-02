@@ -23,21 +23,28 @@ def manual_process_batch(batch_frames, predictor, user_mask, input_box):
 
 def auto_process_batch(input_queue, output_queue, object_count):
     batch_frame_num = 0
-    mask_generator = load_model()  # Create a new mask_generator for each process
-    while True:
-        frames = input_queue.get()
-        if frames is None:  # Signal to end the process
-            break
-        batch_results = []
-        for frame in frames:
-            masks = mask_generator.generate(frame)
-            top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
-            batch_results.append(top_masks)
-            if batch_frame_num % 30 == 0:
-                progress = (batch_frame_num + 1) / len(frames) * 100
-                print(f"Batch inference progress: {progress:.2f}%")
-            batch_frame_num += 1
-        output_queue.put(batch_results)
+    try:
+        mask_generator = load_model()  # Create a new mask_generator for each process
+        while True:
+            try:
+                frames = input_queue.get(timeout=60)  # Wait for 60 seconds max
+                if frames is None:  # Signal to end the process
+                    break
+                batch_results = []
+                for frame in frames:
+                    masks = mask_generator.generate(frame)
+                    top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
+                    batch_results.append(top_masks)
+                    if batch_frame_num % 30 == 0:
+                        progress = (batch_frame_num + 1) / len(frames) * 100
+                        print(f"Batch inference progress: {progress:.2f}%")
+                    batch_frame_num += 1
+                output_queue.put(batch_results)
+            except queue.Empty:
+                print("Worker timed out waiting for input")
+                break
+    except Exception as e:
+        print(f"Error in worker process: {str(e)}")
 
 def load_model(manual=False):
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
@@ -58,7 +65,7 @@ def load_model(manual=False):
 
 def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
     if num_processes is None:
-        num_processes = multiprocessing.cpu_count() - 2
+        num_processes = max(1, multiprocessing.cpu_count() - 1)  # Leave one CPU free
 
     start_time = time.time()
     
@@ -79,7 +86,7 @@ def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
     # Start worker processes
     processes = []
     for _ in range(num_processes):
-        p = multiprocessing.Process(target=auto_process_batch, args=(input_queue, output_queue, object_count))
+        p = multiprocessing.Process(target=process_batch, args=(input_queue, output_queue, object_count))
         p.start()
         processes.append(p)
 
@@ -97,8 +104,14 @@ def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
             frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         
         if frames:
-            input_queue.put(frames)
-            batches_sent += 1
+            while True:
+                try:
+                    input_queue.put(frames, timeout=10)
+                    batches_sent += 1
+                    break
+                except queue.Full:
+                    print("Input queue is full. Waiting...")
+                    time.sleep(1)
         
         if batches_sent % 10 == 0:
             print(f"Sent {batches_sent} batches for processing...")
@@ -112,11 +125,18 @@ def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
     # Collect results
     all_results = []
     for _ in range(batches_sent):
-        all_results.append(output_queue.get())
+        try:
+            result = output_queue.get(timeout=300)  # Wait for 5 minutes max
+            all_results.append(result)
+        except queue.Empty:
+            print("Timed out waiting for a batch result")
 
     # Wait for all processes to finish
     for p in processes:
-        p.join()
+        p.join(timeout=60)  # Wait for 60 seconds max
+        if p.is_alive():
+            print(f"Process {p.pid} did not terminate in time")
+            p.terminate()
 
     # Process results
     all_masks = []
