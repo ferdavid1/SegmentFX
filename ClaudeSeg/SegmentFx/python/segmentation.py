@@ -19,6 +19,8 @@ def process_batch(batch_frames, predictor, user_mask, input_box):
 def load_model(manual=False):
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
     model_type = "vit_t" # tiny model
+    import os
+    print(os.getcwd())
     sam_checkpoint = "models/mobile_sam.pth"
     device = "cpu"
     # device = "cuda" if torch.cuda.is_available() else "cpu"
