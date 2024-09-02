@@ -56,25 +56,20 @@ function autoSegment(objectCount) {
     
     var videoPath = activeSequence.videoTracks[0].clips[0].projectItem.getMediaPath();
     
-    var command = "cd " + extensionRoot + " && " + "python \"" + pythonScript + "\" auto \"" + videoPath + "\" " + objectCount;
+    // var command = "cd " + extensionRoot + " && " + "python \"" + pythonScript + "\" auto \"" + videoPath + "\" " + objectCount;
     
     try {
         $.write(JSON.stringify({ status: "loading", message: "Starting auto segmentation..." }));
 
-        // Create a temporary batch file
-        var tempFile = new File(Folder.temp.fsName + "/temp_command.bat");
-        tempFile.open("w");
-        tempFile.write(command);
-        tempFile.close();
-        
-        // Execute the batch file
-        var result = app.system('cmd.exe /c "' + tempFile.fsName + '"');
-        
-        // Delete the temporary file
-        tempFile.remove();
+        // Execute the Python script
+        $.evalFile(new File($.fileName).parent.fsName + "/execute_python.jsx");
+        var result = executePython(pythonScript, ["auto", videoPath, objectCount]);
         
         // Process result and import masks
         var parsedResult = JSON.parse(result);
+        if (parsedResult.status === "error") {
+            return result;
+        }
         var outputDir = parsedResult.output_dir;
         importMasksToTimeline(outputDir);
         parsedResult.status = "complete";
@@ -104,26 +99,22 @@ function manualSegment(imageData) {
     
     var videoPath = activeSequence.videoTracks[0].clips[0].projectItem.getMediaPath();
     
-    var command = "cd " + extensionRoot + " && " + "python \"" + pythonScript + "\" manual \"" + videoPath + "\" \"" + tempFile.fsName + "\"";
+    // var command = "cd " + extensionRoot + " && " + "python \"" + pythonScript + "\" manual \"" + videoPath + "\" \"" + tempFile.fsName + "\"";
     
     try {
         $.write(JSON.stringify({ status: "loading", message: "Starting manual segmentation..." }));
 
-        // Create a temporary script file
-        var scriptFile = new File(Folder.temp.fsName + "/temp_manual_segment.bat");
-        scriptFile.open("w");
-        scriptFile.write(command);
-        scriptFile.close();
+        // Execute the Python script
+        $.evalFile(new File($.fileName).parent.fsName + "/execute_python.jsx");
+        var result = executePython(pythonScript, ["manual", videoPath, tempFile.fsName]);
         
-        // Execute the script
-        var result = app.system('cmd.exe /c "' + scriptFile.fsName + '"');
-        
-        // Delete the temporary files
-        scriptFile.remove();
         tempFile.remove();
         
         // Process result and import masks
         var parsedResult = JSON.parse(result);
+        if (parsedResult.status === "error") {
+            return result;
+        }
         var outputDir = parsedResult.output_dir;
         importMasksToTimeline(outputDir);
         parsedResult.status = "complete";
@@ -252,20 +243,17 @@ function applyCustomEffect(clipIndex, trackIndex, effectName, parameters) {
     if (!clip) return JSON.stringify({ error: "Clip not found" });
     
     var pythonScript = File($.fileName).parent.fsName + "/python/custom_effects.py";
-    var command = "python \"" + pythonScript + "\" \"" + clip.projectItem.getMediaPath() + "\" \"" + effectName + "\" '" + JSON.stringify(parameters) + "'";
+    // var command = "python \"" + pythonScript + "\" \"" + clip.projectItem.getMediaPath() + "\" \"" + effectName + "\" '" + JSON.stringify(parameters) + "'";
     
     try {
-        // Create a temporary script file
-        var scriptFile = new File(Folder.temp.fsName + "/temp_custom_effect.bat");
-        scriptFile.open("w");
-        scriptFile.write(command);
-        scriptFile.close();
-        
-        // Execute the script
-        var result = app.system('cmd.exe /c "' + scriptFile.fsName + '"');
-        
-        // Delete the temporary file
-        scriptFile.remove();
+        // Execute the Python script
+        $.evalFile(new File($.fileName).parent.fsName + "/execute_python.jsx");
+        var result = executePython(pythonScript, [clip.projectItem.getMediaPath(), effectName, JSON.stringify(parameters)]);
+
+        var parsedResult = JSON.parse(result);
+        if (parsedResult.status === "error") {
+            return result;
+        }
 
         var processedFramesPath = JSON.parse(result).output_path;
         
