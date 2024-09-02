@@ -4,7 +4,9 @@
 
 This extension can be installed with a single click. Follow the instructions for your operating system:
 
-## TODO: make sure package installation comes with a python environment and the installed pip packages in requirements.txt
+## TODO
+1. Make sure package installation comes with a python environment and the installed pip packages in requirements.txt
+2. Install script does pip install git+https://github.com/ChaoningZhang/MobileSAM.git
 
 ### Windows
 
