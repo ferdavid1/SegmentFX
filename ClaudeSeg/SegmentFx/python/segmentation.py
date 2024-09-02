@@ -21,19 +21,23 @@ def manual_process_batch(batch_frames, predictor, user_mask, input_box):
     )
     return np.logical_and(masks, user_mask > 0).astype(np.uint8) * 255
 
-def auto_process_batch(args):
+def auto_process_batch(input_queue, output_queue, object_count):
     batch_frame_num = 0
-    frames, object_count = args
     mask_generator = load_model()  # Create a new mask_generator for each process
-    batch_results = []
-    for frame in frames:
-        masks = mask_generator.generate(frame)
-        top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
-        batch_results.append(top_masks)
-        if batch_frame_num % 30 == 0:
+    while True:
+        frames = input_queue.get()
+        if frames is None:  # Signal to end the process
+            break
+        batch_results = []
+        for frame in frames:
+            masks = mask_generator.generate(frame)
+            top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
+            batch_results.append(top_masks)
+            if batch_frame_num % 30 == 0:
                 progress = (batch_frame_num + 1) / len(frames) * 100
                 print(f"Batch inference progress: {progress:.2f}%")
-    return batch_results
+            batch_frame_num += 1
+        output_queue.put(batch_results)
 
 def load_model(manual=False):
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
@@ -52,7 +56,10 @@ def load_model(manual=False):
         mask_generator = SamPredictor(mobile_sam)
     return mask_generator
 
-def auto_segment(video_path, object_count, batch_size=4):
+def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
+    if num_processes is None:
+        num_processes = multiprocessing.cpu_count() - 2
+
     start_time = time.time()
     
     video = cv2.VideoCapture(video_path)
@@ -65,8 +72,19 @@ def auto_segment(video_path, object_count, batch_size=4):
     output_dir = "segmentation_output"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Prepare batches more efficiently
-    batches = []
+    # Create queues for input and output
+    input_queue = multiprocessing.Queue(maxsize=num_processes * 2)
+    output_queue = multiprocessing.Queue()
+
+    # Start worker processes
+    processes = []
+    for _ in range(num_processes):
+        p = multiprocessing.Process(target=auto_process_batch, args=(input_queue, output_queue, object_count))
+        p.start()
+        processes.append(p)
+
+    # Prepare and process batches
+    batches_sent = 0
     for start_frame in range(0, frame_count, batch_size):
         end_frame = min(start_frame + batch_size, frame_count)
         video.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
@@ -79,18 +97,26 @@ def auto_segment(video_path, object_count, batch_size=4):
             frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         
         if frames:
-            batches.append((frames, object_count))
+            input_queue.put(frames)
+            batches_sent += 1
         
-        if len(batches) % 50 == 0:
-            print(f"Prepared {len(batches)} batches...")
+        if batches_sent % 10 == 0:
+            print(f"Sent {batches_sent} batches for processing...")
 
     video.release()
 
-    print(f"Batch preparation complete. Total batches: {len(batches)}")
+    # Signal processes to end
+    for _ in range(num_processes):
+        input_queue.put(None)
 
-    # Process batches using multiprocessing
-    with multiprocessing.Pool() as pool:
-        all_results = pool.map(auto_process_batch, batches)
+    # Collect results
+    all_results = []
+    for _ in range(batches_sent):
+        all_results.append(output_queue.get())
+
+    # Wait for all processes to finish
+    for p in processes:
+        p.join()
 
     # Process results
     all_masks = []
@@ -143,6 +169,7 @@ def auto_segment(video_path, object_count, batch_size=4):
     print(f"Frames per second: {frames_per_second:.2f}")
     
     return output_dir, total_time, frames_per_second
+
 
 def manual_segment(video_path, mask_path, batch_size=32, skip_frames=2):
     predictor = load_model(manual=True)
