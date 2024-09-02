@@ -22,17 +22,17 @@ def manual_process_batch(batch_frames, predictor, user_mask, input_box):
     return np.logical_and(masks, user_mask > 0).astype(np.uint8) * 255
 
 def auto_process_batch(args):
-    frames, mask_generator, object_count = args
-    batch_results = []
     batch_frame_num = 0
+    frames, object_count = args
+    mask_generator = load_model()  # Create a new mask_generator for each process
+    batch_results = []
     for frame in frames:
         masks = mask_generator.generate(frame)
         top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
         batch_results.append(top_masks)
         if batch_frame_num % 30 == 0:
-            progress = (batch_frame_num + 1) / len(frames) * 100
-            print(f"Batch Segmentation Progress: {progress:.2f}%")
-            batch_frame_num += 1
+                progress = (batch_frame_num + 1) / len(frames) * 100
+                print(f"Batch inference progress: {progress:.2f}%")
     return batch_results
 
 def load_model(manual=False):
@@ -65,30 +65,32 @@ def auto_segment(video_path, object_count, batch_size=4):
     output_dir = "segmentation_output"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Load model once
-    mask_generator = load_model()
-
-    # Prepare batches
+    # Prepare batches more efficiently
     batches = []
-    current_batch = []
-    for _ in range(frame_count):
-        ret, frame = video.read()
-        if not ret:
-            break
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        current_batch.append(frame_rgb)
-        if len(current_batch) == batch_size:
-            batches.append((current_batch, mask_generator, object_count))
-            current_batch = []
-    
-    if current_batch:  # Add any remaining frames
-        batches.append((current_batch, mask_generator, object_count))
+    for start_frame in range(0, frame_count, batch_size):
+        end_frame = min(start_frame + batch_size, frame_count)
+        video.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        
+        frames = []
+        for _ in range(start_frame, end_frame):
+            ret, frame = video.read()
+            if not ret:
+                break
+            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        
+        if frames:
+            batches.append((frames, object_count))
+        
+        if len(batches) % 10 == 0:
+            print(f"Prepared {len(batches)} batches...")
 
     video.release()
 
+    print(f"Batch preparation complete. Total batches: {len(batches)}")
+
     # Process batches using multiprocessing
     with multiprocessing.Pool() as pool:
-        all_results = pool.map(auto_process_batch, batches)
+        all_results = pool.map(process_batch, batches)
 
     # Process results
     all_masks = []
@@ -106,7 +108,7 @@ def auto_segment(video_path, object_count, batch_size=4):
                     'frame': frame_num,
                     'object_id': i,
                     'filename': mask_filename,
-                    'bbox': mask_data['bbox'],
+                    'bbox': mask_data['bbox'].tolist(),
                     'area': float(mask_data['area']),
                     'stability_score': float(mask_data['stability_score'])
                 })
@@ -114,7 +116,7 @@ def auto_segment(video_path, object_count, batch_size=4):
 
             if frame_num % 30 == 0:
                 progress = (frame_num + 1) / frame_count * 100
-                print(f"Writing Progress: {progress:.2f}%")
+                print(f"Processing progress: {progress:.2f}%")
             
             frame_num += 1
 
