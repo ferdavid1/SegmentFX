@@ -75,10 +75,21 @@ def prepare_batches(video_path, batch_size):
     return batches, fps, (width, height)
 
 def producer(batches, input_queue, num_processes):
+    print("Producer starting")
     for i, batch in enumerate(batches):
-        input_queue.put((i, batch))
+        try:
+            input_queue.put((i, batch), timeout=60)
+            print(f"Producer: Added batch {i} to queue")
+        except queue.Full:
+            print(f"Producer: Queue full when trying to add batch {i}")
+    print("Producer: All batches added to queue")
     for _ in range(num_processes):
-        input_queue.put(None)  # Signal to end the process
+        try:
+            input_queue.put(None, timeout=60)  # Signal to end the process
+            print("Producer: Added end signal to queue")
+        except queue.Full:
+            print("Producer: Queue full when trying to add end signal")
+    print("Producer finishing")
 
 def load_model(manual=False):
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
@@ -128,16 +139,34 @@ def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
     # Collect results
     results = []
     total_process_time = 0
-    for _ in range(len(batches)):
-        batch_num, batch_results, process_time = output_queue.get()
-        results.append((batch_num, batch_results))
-        total_process_time += process_time
-        print(f"Received result for batch {batch_num}. Total batches processed: {len(results)}/{len(batches)}")
+    timeout_counter = 0
+    while len(results) < len(batches):
+        try:
+            batch_num, batch_results, process_time = output_queue.get(timeout=60)
+            results.append((batch_num, batch_results))
+            total_process_time += process_time
+            print(f"Received result for batch {batch_num}. Total batches processed: {len(results)}/{len(batches)}")
+            timeout_counter = 0  # Reset timeout counter on successful receive
+        except queue.Empty:
+            print("Timeout while waiting for results")
+            timeout_counter += 1
+            if timeout_counter > 5:  # If we've had 5 consecutive timeouts, break the loop
+                print("Too many consecutive timeouts. Breaking loop.")
+                break
 
     # Wait for all processes to finish
-    producer_process.join()
+    print("Waiting for producer to finish...")
+    producer_process.join(timeout=60)
+    if producer_process.is_alive():
+        print("Producer process did not finish in time. Terminating.")
+        producer_process.terminate()
+
+    print("Waiting for workers to finish...")
     for p in processes:
-        p.join()
+        p.join(timeout=60)
+        if p.is_alive():
+            print(f"Worker process {p.pid} did not finish in time. Terminating.")
+            p.terminate()
 
     # Sort results by batch number
     results.sort(key=lambda x: x[0])
