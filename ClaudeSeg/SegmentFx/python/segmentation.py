@@ -4,6 +4,7 @@ import multiprocessing
 import numpy as np
 import os
 from PIL import Image
+import queue
 import sys
 import time
 # import torch
