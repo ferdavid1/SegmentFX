@@ -161,7 +161,7 @@ def auto_segment(video_path, object_count, batch_size=2, num_processes=None):
     all_masks = []
     mask_metadata = []
     frame_num = 0
-    for batch_result in all_results:
+    for batch_result in results:
         for frame_masks in batch_result:
             frame_mask_data = []
             for i, mask_data in enumerate(frame_masks):
