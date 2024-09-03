@@ -22,17 +22,17 @@ def manual_process_batch(batch_frames, predictor, user_mask, input_box):
     )
     return np.logical_and(masks, user_mask > 0).astype(np.uint8) * 255
 
-def auto_process_batch(process_id, input_queue, output_queue, object_count):
+def auto_process_batch(process_id, task_queue, result_queue, object_count):
     print(f"Worker {process_id} starting")
     mask_generator = load_model()
     print(f"Worker {process_id} loaded model")
     while True:
         try:
-            item = input_queue.get(timeout=60)
-            if item is None:  # Signal to end the process
+            task = task_queue.get(timeout=60)
+            if task is None:  # Signal to end the process
                 print(f"Worker {process_id} received end signal")
                 break
-            batch_num, frames = item
+            batch_num, frames = task
             start_time = time.time()
             print(f"Worker {process_id} processing batch {batch_num} of {len(frames)} frames")
             batch_results = []
@@ -41,10 +41,8 @@ def auto_process_batch(process_id, input_queue, output_queue, object_count):
                 top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
                 batch_results.append(top_masks)
             process_time = time.time() - start_time
-            output_queue.put((batch_num, batch_results, process_time))
+            result_queue.put((batch_num, batch_results, process_time))
             print(f"Worker {process_id} completed batch {batch_num} in {process_time:.2f} seconds")
-        except queue.Empty:
-            print(f"Worker {process_id} timed out waiting for input")
         except Exception as e:
             print(f"Error in worker process {process_id}: {str(e)}")
     print(f"Worker {process_id} finishing")
@@ -74,22 +72,6 @@ def prepare_batches(video_path, batch_size):
     video.release()
     return batches, fps, (width, height)
 
-def producer(batches, input_queue, num_processes):
-    print("Producer starting")
-    for i, batch in enumerate(batches):
-        try:
-            input_queue.put((i, batch), timeout=60)
-            print(f"Producer: Added batch {i} to queue")
-        except queue.Full:
-            print(f"Producer: Queue full when trying to add batch {i}")
-    print("Producer: All batches added to queue")
-    for _ in range(num_processes):
-        try:
-            input_queue.put(None, timeout=60)  # Signal to end the process
-            print("Producer: Added end signal to queue")
-        except queue.Full:
-            print("Producer: Queue full when trying to add end signal")
-    print("Producer finishing")
 
 def load_model(manual=False):
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
@@ -121,47 +103,41 @@ def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
     output_dir = "segmentation_output"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Create queues for input and output
-    input_queue = multiprocessing.Queue(maxsize=num_processes * 2)
-    output_queue = multiprocessing.Queue()
+    # Create queues for tasks and results
+    task_queue = multiprocessing.Queue()
+    result_queue = multiprocessing.Queue()
 
     # Start worker processes
     processes = []
     for i in range(num_processes):
-        p = multiprocessing.Process(target=auto_process_batch, args=(i, input_queue, output_queue, object_count))
+        p = multiprocessing.Process(target=auto_process_batch, args=(i, task_queue, result_queue, object_count))
         p.start()
         processes.append(p)
 
-    # Start producer process
-    producer_process = multiprocessing.Process(target=producer, args=(batches, input_queue, num_processes))
-    producer_process.start()
+    # Add tasks to the queue
+    for i, batch in enumerate(batches):
+        task_queue.put((i, batch))
+        print(f"Added batch {i} to task queue")
+
+    # Add end signals
+    for _ in range(num_processes):
+        task_queue.put(None)
+    print("Added end signals to task queue")
 
     # Collect results
     results = []
     total_process_time = 0
-    timeout_counter = 0
     while len(results) < len(batches):
         try:
-            batch_num, batch_results, process_time = output_queue.get(timeout=60)
+            batch_num, batch_results, process_time = result_queue.get(timeout=300)
             results.append((batch_num, batch_results))
             total_process_time += process_time
             print(f"Received result for batch {batch_num}. Total batches processed: {len(results)}/{len(batches)}")
-            timeout_counter = 0  # Reset timeout counter on successful receive
-        except queue.Empty:
-            print("Timeout while waiting for results")
-            timeout_counter += 1
-            if timeout_counter > 5:  # If we've had 5 consecutive timeouts, break the loop
-                print("Too many consecutive timeouts. Breaking loop.")
-                break
+        except Exception as e:
+            print(f"Error while collecting results: {str(e)}")
+            break
 
     # Wait for all processes to finish
-    print("Waiting for producer to finish...")
-    producer_process.join(timeout=60)
-    if producer_process.is_alive():
-        print("Producer process did not finish in time. Terminating.")
-        producer_process.terminate()
-
-    print("Waiting for workers to finish...")
     for p in processes:
         p.join(timeout=60)
         if p.is_alive():
