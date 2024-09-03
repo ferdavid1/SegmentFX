@@ -191,11 +191,14 @@ def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
 
     end_time = time.time()
     total_time = end_time - start_time
-    frames_per_second = frame_count / total_time
+    frames_processed = sum(len(batch) for batch in batches)
+    frames_per_second = frames_processed / total_process_time if total_process_time > 0 else 0
 
     print(f"Segmentation complete. Output saved to {output_dir}")
     print(f"Total processing time: {total_time:.2f} seconds")
-    print(f"Frames per second: {frames_per_second:.2f}")
+    print(f"Total segmentation time: {total_process_time:.2f} seconds")
+    print(f"Frames processed: {frames_processed}")
+    print(f"Frames per second (during segmentation): {frames_per_second:.2f}")
     
     return output_dir, total_time, frames_per_second
 
