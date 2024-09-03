@@ -23,35 +23,57 @@ def manual_process_batch(batch_frames, predictor, user_mask, input_box):
     return np.logical_and(masks, user_mask > 0).astype(np.uint8) * 255
 
 def auto_process_batch(process_id, input_queue, output_queue, object_count):
-    batch_frame_num = 0
     print(f"Worker {process_id} starting")
-    try:
-        mask_generator = load_model()  # Create a new mask_generator for each process
-        print(f"Worker {process_id} loaded model")
-        while True:
-            try:
-                frames = input_queue.get(timeout=60)  # Wait for 60 seconds max
-                if frames is None:  # Signal to end the process
-                    print(f"Worker {process_id} received end signal")
-                    break
-                batch_results = []
-                for frame in frames:
-                    masks = mask_generator.generate(frame)
-                    top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
-                    batch_results.append(top_masks)
-                    if batch_frame_num % 30 == 0:
-                        progress = (batch_frame_num + 1) / len(frames) * 100
-                        print(f"Batch inference progress: {progress:.2f}%")
-                    batch_frame_num += 1
-                output_queue.put(batch_results)
-                print(f"Worker {process_id} completed batch")
-            except queue.Empty:
-                print(f"Worker {process_id} timed out waiting for input")
+    mask_generator = load_model()
+    print(f"Worker {process_id} loaded model")
+    while True:
+        try:
+            item = input_queue.get(timeout=60)
+            if item is None:  # Signal to end the process
+                print(f"Worker {process_id} received end signal")
                 break
-    except Exception as e:
-        print(f"Error in worker process {process_id}: {str(e)}")
-
+            batch_num, frames = item
+            start_time = time.time()
+            print(f"Worker {process_id} processing batch {batch_num} of {len(frames)} frames")
+            batch_results = []
+            for frame in frames:
+                masks = mask_generator.generate(frame)
+                top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
+                batch_results.append(top_masks)
+            process_time = time.time() - start_time
+            output_queue.put((batch_num, batch_results, process_time))
+            print(f"Worker {process_id} completed batch {batch_num} in {process_time:.2f} seconds")
+        except queue.Empty:
+            print(f"Worker {process_id} timed out waiting for input")
+        except Exception as e:
+            print(f"Error in worker process {process_id}: {str(e)}")
     print(f"Worker {process_id} finishing")
+
+def prepare_batches(video_path, batch_size):
+    video = cv2.VideoCapture(video_path)
+    frame_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = video.get(cv2.CAP_PROP_FPS)
+    width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    batches = []
+    for start_frame in range(0, frame_count, batch_size):
+        end_frame = min(start_frame + batch_size, frame_count)
+        video.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        
+        frames = []
+        for _ in range(start_frame, end_frame):
+            ret, frame = video.read()
+            if not ret:
+                break
+            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        
+        if frames:
+            batches.append(frames)
+    
+    video.release()
+    return batches, fps, (width, height)
+
 
 def load_model(manual=False):
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
@@ -72,16 +94,13 @@ def load_model(manual=False):
 
 def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
     if num_processes is None:
-        num_processes = max(1, multiprocessing.cpu_count() - 4)  # Leave 4 CPU free
+        num_processes = max(1, multiprocessing.cpu_count() - 2)  # Leave two CPUs free
 
     start_time = time.time()
     
-    video = cv2.VideoCapture(video_path)
-    
-    frame_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = video.get(cv2.CAP_PROP_FPS)
-    width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print("Preparing batches...")
+    batches, fps, (width, height) = prepare_batches(video_path, batch_size)
+    print(f"Prepared {len(batches)} batches")
 
     output_dir = "segmentation_output"
     os.makedirs(output_dir, exist_ok=True)
@@ -97,72 +116,32 @@ def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
         p.start()
         processes.append(p)
 
-    # Prepare and process batches
-    batches_sent = 0
-    results_received = 0
-    for start_frame in range(0, frame_count, batch_size):
-        end_frame = min(start_frame + batch_size, frame_count)
-        video.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-        
-        frames = []
-        for _ in range(start_frame, end_frame):
-            ret, frame = video.read()
-            if not ret:
-                break
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        
-        if frames:
-            while True:
-                try:
-                    input_queue.put(frames, timeout=10)
-                    batches_sent += 1
-                    print(f"Sent batch {batches_sent}")
-                    break
-                except queue.Full:
-                    print("Input queue is full. Waiting...")
-                    # Try to get results while waiting
-                    try:
-                        output_queue.get_nowait()
-                        results_received += 1
-                        print(f"Received result {results_received} while waiting")
-                    except queue.Empty:
-                        pass
-                    time.sleep(1)
-        
-        # Periodically check for results
-        if batches_sent % 5 == 0:
-            while not output_queue.empty():
-                try:
-                    output_queue.get_nowait()
-                    results_received += 1
-                    print(f"Received result {results_received}")
-                except queue.Empty:
-                    break
+    # Producer process
+    def producer():
+        for i, batch in enumerate(batches):
+            input_queue.put((i, batch))
+        for _ in range(num_processes):
+            input_queue.put(None)  # Signal to end the process
 
-    video.release()
+    producer_process = multiprocessing.Process(target=producer)
+    producer_process.start()
 
-    print("All batches sent. Waiting for remaining results...")
-
-    # Wait for remaining results
-    while results_received < batches_sent:
-        try:
-            output_queue.get(timeout=300)  # Wait for 5 minutes max
-            results_received += 1
-            print(f"Received result {results_received}/{batches_sent}")
-        except queue.Empty:
-            print(f"Timed out waiting for results. Received {results_received}/{batches_sent}")
-            break
-
-    # Signal processes to end
-    for _ in range(num_processes):
-        input_queue.put(None)
+    # Collect results
+    results = []
+    total_process_time = 0
+    for _ in range(len(batches)):
+        batch_num, batch_results, process_time = output_queue.get()
+        results.append((batch_num, batch_results))
+        total_process_time += process_time
+        print(f"Received result for batch {batch_num}. Total batches processed: {len(results)}/{len(batches)}")
 
     # Wait for all processes to finish
+    producer_process.join()
     for p in processes:
-        p.join(timeout=60)  # Wait for 60 seconds max
-        if p.is_alive():
-            print(f"Process {p.pid} did not terminate in time")
-            p.terminate()
+        p.join()
+
+    # Sort results by batch number
+    results.sort(key=lambda x: x[0])
 
     # Process results
     all_masks = []
