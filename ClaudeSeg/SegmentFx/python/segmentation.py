@@ -72,7 +72,7 @@ def load_model(manual=False):
 
 def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
     if num_processes is None:
-        num_processes = max(1, multiprocessing.cpu_count() - 2)  # Leave two CPU free
+        num_processes = max(1, multiprocessing.cpu_count() - 4)  # Leave 4 CPU free
 
     start_time = time.time()
     
