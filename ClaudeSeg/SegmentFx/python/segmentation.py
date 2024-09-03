@@ -1,4 +1,5 @@
 import cv2
+import gc
 import json
 import multiprocessing
 import numpy as np
@@ -37,9 +38,16 @@ def auto_process_batch(process_id, task_queue, result_queue, object_count):
             print(f"Worker {process_id} processing batch {batch_num} of {len(frames)} frames")
             batch_results = []
             for frame in frames:
-                masks = mask_generator.generate(frame)
-                top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
-                batch_results.append(top_masks)
+                try:
+                    masks = mask_generator.generate(frame)
+                    top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
+                    batch_results.append(top_masks)
+                except RuntimeError as e:
+                    if "out of memory" in str(e):
+                        print(f"Worker {process_id} out of memory, skipping frame")
+                        gc.collect()
+                    else:
+                        raise e
             process_time = time.time() - start_time
             result_queue.put((batch_num, batch_results, process_time))
             print(f"Worker {process_id} completed batch {batch_num} in {process_time:.2f} seconds")
@@ -64,13 +72,15 @@ def prepare_batches(video_path, batch_size):
             ret, frame = video.read()
             if not ret:
                 break
+            # Resize frame to reduce memory usage
+            frame = cv2.resize(frame, (width // 2, height // 2))
             frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         
         if frames:
             batches.append(frames)
     
     video.release()
-    return batches, fps, (width, height)
+    return batches, fps, (width // 2, height // 2)
 
 
 def load_model(manual=False):
@@ -90,7 +100,7 @@ def load_model(manual=False):
         mask_generator = SamPredictor(mobile_sam)
     return mask_generator
 
-def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
+def auto_segment(video_path, object_count, batch_size=2, num_processes=None):
     if num_processes is None:
         num_processes = max(1, multiprocessing.cpu_count() - 2)  # Leave two CPUs free
 
