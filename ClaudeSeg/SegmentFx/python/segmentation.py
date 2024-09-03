@@ -74,6 +74,11 @@ def prepare_batches(video_path, batch_size):
     video.release()
     return batches, fps, (width, height)
 
+def producer(batches, input_queue, num_processes):
+    for i, batch in enumerate(batches):
+        input_queue.put((i, batch))
+    for _ in range(num_processes):
+        input_queue.put(None)  # Signal to end the process
 
 def load_model(manual=False):
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
@@ -112,18 +117,12 @@ def auto_segment(video_path, object_count, batch_size=4, num_processes=None):
     # Start worker processes
     processes = []
     for i in range(num_processes):
-        p = multiprocessing.Process(target=auto_process_batch, args=(i, input_queue, output_queue, object_count))
+        p = multiprocessing.Process(target=process_batch, args=(i, input_queue, output_queue, object_count))
         p.start()
         processes.append(p)
 
-    # Producer process
-    def producer():
-        for i, batch in enumerate(batches):
-            input_queue.put((i, batch))
-        for _ in range(num_processes):
-            input_queue.put(None)  # Signal to end the process
-
-    producer_process = multiprocessing.Process(target=producer)
+    # Start producer process
+    producer_process = multiprocessing.Process(target=producer, args=(batches, input_queue, num_processes))
     producer_process.start()
 
     # Collect results
