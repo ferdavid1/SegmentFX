@@ -12,7 +12,6 @@ import traceback
 # import torch
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
-warnings.filterwarnings('ignore')
 
 def manual_process_batch(batch_frames, predictor, user_mask, input_box):
     predictor.set_image(np.stack(batch_frames))
@@ -24,7 +23,7 @@ def manual_process_batch(batch_frames, predictor, user_mask, input_box):
     )
     return np.logical_and(masks, user_mask > 0).astype(np.uint8) * 255
 
-def process_frame(process_id, task_queue, result_queue, object_count):
+def process_frame(process_id, task_queue, result_queue, object_count, resize_factor):
     print(f"Worker {process_id} starting")
     mask_generator = load_model()
     print(f"Worker {process_id} loaded model")
@@ -34,12 +33,30 @@ def process_frame(process_id, task_queue, result_queue, object_count):
             if task is None:  # Signal to end the process
                 print(f"Worker {process_id} received end signal")
                 break
-            frame_num, frame = task
+            frame_num, frame, original_size = task
             start_time = time.time()
             print(f"Worker {process_id} processing frame {frame_num}")
             try:
-                masks = mask_generator.generate(frame)
+                # Resize frame for segmentation
+                h, w = frame.shape[:2]
+                small_frame = cv2.resize(frame, (int(w * resize_factor), int(h * resize_factor)))
+                
+                masks = mask_generator.generate(small_frame)
                 top_masks = sorted(masks, key=lambda x: x['area'], reverse=True)[:object_count]
+                
+                # Resize masks back to original size
+                for mask in top_masks:
+                    mask['segmentation'] = cv2.resize(mask['segmentation'].astype(np.uint8), original_size) > 0
+                    # Adjust bounding box
+                    x1, y1, x2, y2 = mask['bbox']
+                    mask['bbox'] = [
+                        int(x1 / resize_factor),
+                        int(y1 / resize_factor),
+                        int(x2 / resize_factor),
+                        int(y2 / resize_factor)
+                    ]
+                    mask['area'] = mask['area'] / (resize_factor ** 2)
+                
                 process_time = time.time() - start_time
                 result_queue.put((frame_num, top_masks, process_time))
                 print(f"Worker {process_id} completed frame {frame_num} in {process_time:.2f} seconds")
@@ -48,10 +65,17 @@ def process_frame(process_id, task_queue, result_queue, object_count):
                 traceback.print_exc()
                 result_queue.put((frame_num, None, 0))
             gc.collect()
+            
+            # Periodic status update
+            if frame_num % 10 == 0:
+                memory_usage = psutil.Process().memory_info().rss / 1024 / 1024  # in MB
+                print(f"Worker {process_id} status: Frame {frame_num}, Memory usage: {memory_usage:.2f} MB")
+                
         except Exception as e:
             print(f"Error in worker process {process_id}: {str(e)}")
             traceback.print_exc()
     print(f"Worker {process_id} finishing")
+
 
 def prepare_frames(video_path, max_frames=None):
     video = cv2.VideoCapture(video_path)
@@ -67,40 +91,10 @@ def prepare_frames(video_path, max_frames=None):
         ret, frame = video.read()
         if not ret:
             break
-        # Resize frame to reduce memory usage
-        frame = cv2.resize(frame, (width // 2, height // 2))
-        frames.append((frame_num, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+        frames.append((frame_num, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), (width, height)))
     
     video.release()
-    return frames, fps, (width // 2, height // 2)
-
-def prepare_batches(video_path, batch_size):
-    video = cv2.VideoCapture(video_path)
-    frame_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = video.get(cv2.CAP_PROP_FPS)
-    width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    
-    batches = []
-    for start_frame in range(0, frame_count, batch_size):
-        end_frame = min(start_frame + batch_size, frame_count)
-        video.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-        
-        frames = []
-        for _ in range(start_frame, end_frame):
-            ret, frame = video.read()
-            if not ret:
-                break
-            # Resize frame to reduce memory usage
-            frame = cv2.resize(frame, (width // 2, height // 2))
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        
-        if frames:
-            batches.append(frames)
-    
-    video.release()
-    return batches, fps, (width // 2, height // 2)
-
+    return frames, fps, (width, height)
 
 def load_model(manual=False):
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
@@ -119,14 +113,15 @@ def load_model(manual=False):
         mask_generator = SamPredictor(mobile_sam)
     return mask_generator
 
-def auto_segment(video_path, object_count, num_processes=None, max_frames=None):
+
+def auto_segment(video_path, object_count, num_processes=None, max_frames=None, resize_factor=0.5):
     if num_processes is None:
         num_processes = max(1, multiprocessing.cpu_count() - 2)  # Leave two CPUs free
 
     start_time = time.time()
     
     print("Preparing frames...")
-    frames, fps, (width, height) = prepare_frames(video_path, max_frames)
+    frames, fps, original_size = prepare_frames(video_path, max_frames)
     print(f"Prepared {len(frames)} frames")
 
     output_dir = "segmentation_output"
@@ -139,14 +134,14 @@ def auto_segment(video_path, object_count, num_processes=None, max_frames=None):
     # Start worker processes
     processes = []
     for i in range(num_processes):
-        p = multiprocessing.Process(target=process_frame, args=(i, task_queue, result_queue, object_count))
+        p = multiprocessing.Process(target=process_frame, args=(i, task_queue, result_queue, object_count, resize_factor))
         p.start()
         processes.append(p)
 
     # Add tasks to the queue
     for frame in frames:
         task_queue.put(frame)
-        print(f"Added frame {frame[0]} to task queue")
+    print(f"Added {len(frames)} frames to task queue")
 
     # Add end signals
     for _ in range(num_processes):
@@ -156,21 +151,26 @@ def auto_segment(video_path, object_count, num_processes=None, max_frames=None):
     # Collect results
     results = []
     total_process_time = 0
+    timeout_counter = 0
     while len(results) < len(frames):
         try:
-            frame_num, frame_result, process_time = result_queue.get(timeout=300)
+            frame_num, frame_result, process_time = result_queue.get(timeout=600)  # Increased timeout to 10 minutes
             results.append((frame_num, frame_result))
             if frame_result is not None:
                 total_process_time += process_time
             print(f"Received result for frame {frame_num}. Total frames processed: {len(results)}/{len(frames)}")
+            timeout_counter = 0  # Reset timeout counter on successful receive
         except Exception as e:
             print(f"Error while collecting results: {str(e)}")
             traceback.print_exc()
-            break
+            timeout_counter += 1
+            if timeout_counter > 5:  # Break after 5 consecutive timeouts
+                print("Too many consecutive timeouts. Breaking loop.")
+                break
 
     # Wait for all processes to finish
     for p in processes:
-        p.join(timeout=60)
+        p.join(timeout=120)  # Increased timeout to 2 minutes
         if p.is_alive():
             print(f"Worker process {p.pid} did not finish in time. Terminating.")
             p.terminate()
