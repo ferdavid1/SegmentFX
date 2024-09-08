@@ -24,7 +24,6 @@ def manual_process_batch(batch_frames, predictor, user_mask, input_box):
     )
     return np.logical_and(masks, user_mask > 0).astype(np.uint8) * 255
 
-d
 def process_frame(process_id, task_queue, result_queue, object_count):
     print(f"Worker {process_id} starting")
     mask_generator = load_model()
